@@ -1,0 +1,25 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.corgitaco.worldviewer.mixin",
+  "refmap": "${mod_id}.refmap.json",
+  "plugin": "dev.corgitaco.worldviewer.mixin.RediscoveredMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "IOWorkerAccessor",
+    "MixinBiomeAccess",
+    "RegionFileStorageAccessor",
+    "dev.MinecraftServerFastSpawnMixin"
+  ],
+  "client": [
+    "KeyMappingAccess",
+    "MixinOptionsScreen",
+    "NativeImageAccessor"
+  ],
+  "server": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
+
