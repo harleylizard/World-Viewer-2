@@ -1,5 +1,6 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.WVDynamicTexture;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
@@ -25,12 +26,26 @@ public class BiomeLayer extends TileLayer {
 
     private int[][] colorData;
 
-    @Nullable
-    private DynamicTexture lazy;
+    private NativeImage image;
+
+
 
     public BiomeLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen);
         this.colorData = buildImage(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks);
+        this.image = makeNativeImageFromColorData(colorData);
+    }
+
+    public static NativeImage makeNativeImageFromColorData(int[][] data) {
+        NativeImage nativeImage = new NativeImage(data.length, data.length, true);
+        for (int x = 0; x < data.length; x++) {
+            int[] colorRow = data[x];
+            for (int y = 0; y < colorRow.length; y++) {
+                int color = colorRow[y];
+                nativeImage.setPixelRGBA(x, y, color);
+            }
+        }
+        return nativeImage;
     }
 
     private static int[][] buildImage(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
@@ -64,30 +79,6 @@ public class BiomeLayer extends TileLayer {
             }
         }
         return colorData;
-    }
-
-    @Override
-    public void render(GuiGraphics guiGraphics, float opacity, Map<String, TileLayer> layers) {
-        if (!layers.containsKey("mixed_heights_biomes") && getImage() != null) {
-            renderImage(guiGraphics, getImage(), opacity, 1);
-        }
-    }
-
-    @Override
-    public DynamicTexture getImage() {
-        if (lazy == null) {
-            this.lazy = new WVDynamicTexture(makeNativeImageFromColorData(this.colorData));
-            this.colorData = null;
-        }
-        return this.lazy;
-    }
-
-    @Override
-    public void close() {
-        super.close();
-        if (lazy != null) {
-            this.lazy.close();
-        }
     }
 
     public static final Object2IntOpenHashMap<ResourceKey<Biome>> FAST_COLORS = Util.make(new Object2IntOpenHashMap<>(), map -> {
@@ -177,5 +168,10 @@ public class BiomeLayer extends TileLayer {
         int g = ClientUtil.getNativeG(abgr);
         int r = ClientUtil.getNativeR(abgr);
         return FastColor.ARGB32.color(a, r, g, b);
+    }
+
+    @Override
+    public NativeImage image() {
+        return this.image;
     }
 }

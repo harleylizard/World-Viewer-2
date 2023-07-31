@@ -1,32 +1,24 @@
 package dev.corgitaco.worldviewer.client.screen;
 
 import com.mojang.authlib.GameProfile;
-import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.RenderTileManager;
 import dev.corgitaco.worldviewer.client.tile.RenderTile;
+import dev.corgitaco.worldviewer.client.tile.TileCoordinateShiftingManager;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.BiomeLayer;
-import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
-import dev.corgitaco.worldviewer.util.LongPackingUtil;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractSliderButton;
-import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
-import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
@@ -36,24 +28,18 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.packs.resources.Resource;
-import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.FastColor;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.levelgen.structure.Structure;
-import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
-import java.io.IOException;
 import java.util.*;
-import java.util.function.DoubleConsumer;
 
 import static dev.corgitaco.worldviewer.util.LongPackingUtil.getTileX;
 import static dev.corgitaco.worldviewer.util.LongPackingUtil.getTileZ;
@@ -61,10 +47,10 @@ import static dev.corgitaco.worldviewer.util.LongPackingUtil.getTileZ;
 
 public class WorldScreenv2 extends Screen {
 
-    public int shift = 7;
+    public TileCoordinateShiftingManager shiftingManager = new TileCoordinateShiftingManager(7);
 
 
-    public int tileSize = tileToBlock(1);
+    public int tileSize = shiftingManager.tileToBlock(1);
 
     public int sampleResolution = tileSize >> 6;
 
@@ -77,7 +63,7 @@ public class WorldScreenv2 extends Screen {
 
     private int coolDown;
 
-    private final Object2ObjectOpenHashMap<Holder<Structure>, StructureRender> structureRendering = new Object2ObjectOpenHashMap<>();
+//    private final Object2ObjectOpenHashMap<Holder<Structure>, StructureRender> structureRendering = new Object2ObjectOpenHashMap<>();
 
     private static final Map<UUID, ResourceLocation> SKINS = new HashMap<>();
 
@@ -99,116 +85,15 @@ public class WorldScreenv2 extends Screen {
         super(title);
     }
 
-    private void computeStructureRenderers() {
-        var random = level.random;
-        level.getChunkSource().getGeneratorState().possibleStructureSets().stream().map(Holder::value).map(StructureSet::structures).forEach(structureSelectionEntries -> {
-            for (StructureSet.StructureSelectionEntry structureSelectionEntry : structureSelectionEntries) {
-                Holder<Structure> structure = structureSelectionEntry.structure();
-                var r = Mth.randomBetweenInclusive(random, 25, 256);
-                var g = Mth.randomBetweenInclusive(random, 25, 256);
-                var b = Mth.randomBetweenInclusive(random, 25, 256);
-
-                ResourceLocation location = structure.unwrapKey().orElseThrow().location();
-
-                if (!structureRendering.containsKey(structure)) {
-                    StructureRender structureRender;
-                    ResourceManager resourceManager = Minecraft.getInstance().getResourceManager();
-                    ResourceLocation resourceLocation = new ResourceLocation(location.getNamespace(), "worldview/icon/structure/" + location.getPath() + ".png");
-
-                    Optional<Resource> resource = resourceManager.getResource(resourceLocation);
-                    if (resource.isPresent()) {
-                        try (DynamicTexture texture = new DynamicTexture(NativeImage.read(resource.get().open()))) {
-
-                            structureRender = (guiGraphics, minDrawX, minDrawZ, maxDrawX, maxDrawZ, opacity) -> {
-                                var pixels = texture.getPixels();
-                                if (pixels == null) {
-                                    return;
-                                }
-
-                                int drawX = (maxDrawX - minDrawX / 2);
-                                int drawZ = (maxDrawZ - minDrawZ / 2);
-
-                                int width = (int) (pixels.getWidth() / scale);
-                                int height = (int) (pixels.getHeight() / scale);
-                                guiGraphics.blit(resourceLocation, drawX - (width / 2), drawZ - (height / 2), 0.0F, 0.0F, width, height, width, height);
-                                RenderSystem.disableBlend();
-                            };
-
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-
-
-                    } else {
-                        structureRender = (guiGraphics, minDrawX, minDrawZ, maxDrawX, maxDrawZ, opacity) -> guiGraphics.fill(minDrawX, minDrawZ, maxDrawX, maxDrawZ, FastColor.ARGB32.color((int) (255 * opacity), r, g, b));
-                    }
-
-                    this.structureRendering.put(structure, structureRender);
-                }
-            }
-        });
-    }
-
 
     @Override
     protected void init() {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
         this.level = server.getLevel(Minecraft.getInstance().level.dimension());
         this.origin.set(Minecraft.getInstance().player.blockPosition());
-        computeStructureRenderers();
         setWorldArea();
 
         this.renderTileManager = new RenderTileManager(this, level, origin);
-
-        int buttonWidth = 120;
-        int buttonHeight = 20;
-
-        List<AbstractWidget> opacity = new ArrayList<>();
-        for (String key : TileLayer.FACTORY_REGISTRY.keySet()) {
-            opacities.put(key, 1.0F);
-            opacity.add(new Slider(0, 0, buttonWidth, buttonHeight, Component.literal("%s opacity".formatted(key)), 1, value -> {
-                opacities.put(key, (float) Mth.clamp(value, 0F, 1F));
-            }));
-        }
-
-        int itemHeight = buttonHeight + 2;
-
-        int bottomPos = this.height - 70;
-        int listRenderedHeight = bottomPos + (buttonHeight * 3);
-
-        this.opacityList = new WidgetList(opacity, buttonWidth + 10, listRenderedHeight, bottomPos, listRenderedHeight + 10, itemHeight);
-
-
-        int biomeButtonWidth = 150;
-        List<AbstractWidget> widgets = new ArrayList<>();
-        this.level.getChunkSource().getGenerator().getBiomeSource().possibleBiomes().stream().sorted(Comparator.comparing(biomeHolder -> biomeHolder.unwrapKey().orElseThrow().location(), ResourceLocation::compareTo)).forEach(possibleBiome -> {
-            ResourceKey<Biome> biomeResourceKey = possibleBiome.unwrapKey().orElseThrow();
-            ResourceLocation location = biomeResourceKey.location();
-            widgets.add(new Button(0, 0, biomeButtonWidth, 20, Component.literal("biome." + location.getNamespace() + "." + location.getPath()), button -> {
-                if (highlightedBiome == biomeResourceKey) {
-                    highlightedBiome = null;
-                } else {
-                    highlightedBiome = biomeResourceKey;
-                }
-            }, supplier -> Component.empty()));
-        });
-
-        int highLightBiomeButtonHeight = 10;
-
-        int biomeListHeight = bottomPos;
-
-
-        int middle = height - (height / 2);
-
-        int biomeSelectorHeight = ((highLightBiomeButtonHeight + 2) * 10);
-        int listBottom = middle - biomeSelectorHeight / 2;
-        int listTop = middle + (biomeSelectorHeight / 2);
-        this.highlightBiomes = new WidgetList(widgets, biomeButtonWidth + 10, biomeListHeight, listBottom, listTop, highLightBiomeButtonHeight + 10);
-
-        this.opacityList.setLeftPos(0);
-        this.highlightBiomes.setLeftPos(width - highlightBiomes.getRowWidth() - 1);
-        addRenderableWidget(this.opacityList);
-        addRenderableWidget(this.highlightBiomes);
         super.init();
     }
 
@@ -240,7 +125,7 @@ public class WorldScreenv2 extends Screen {
 
         drawGrid(guiGraphics);
 
-        drawPlayers(stack);
+//        drawPlayers(stack);
 
         stack.popPose();
 
@@ -253,8 +138,8 @@ public class WorldScreenv2 extends Screen {
     private void renderToolTip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         BlockPos mouseWorldPos = getMouseWorldPos(mouseX, mouseY);
 
-        long mouseTileKey = tileKey(mouseWorldPos);
-        RenderTile renderTile = this.renderTileManager.rendering.get(mouseTileKey);
+        long mouseTileKey = shiftingManager.tileKey(mouseWorldPos);
+        RenderTile renderTile = this.renderTileManager.loaded.get(mouseTileKey);
 
         List<Component> toolTip = buildToolTip(mouseWorldPos, this.renderTileManager.getDataTileManager());
         if (renderTile != null) {
@@ -305,35 +190,35 @@ public class WorldScreenv2 extends Screen {
     }
 
     private void drawGrid(GuiGraphics guiGraphics) {
-        drawGrid(guiGraphics, shift + 2);
+        drawGrid(guiGraphics, new TileCoordinateShiftingManager(this.shiftingManager.getShift() + 2));
     }
 
-    private void drawGrid(GuiGraphics guiGraphics, int gridShift) {
+    private void drawGrid(GuiGraphics guiGraphics, TileCoordinateShiftingManager tileCoordinateShiftingManager) {
         PoseStack poseStack = guiGraphics.pose();
         int gridColor = FastColor.ARGB32.color(100, 255, 255, 255);
-        long originTile = tileKey(this.origin);
+        long originTile = this.shiftingManager.tileKey(this.origin);
         int lineWidth = (int) Math.ceil(0.75 / scale);
 
-        int tileMinX = blockToTile(tileToBlock(getTileX(originTile) - getXTileRange()), gridShift);
-        int tileMaxX = blockToTile(tileToBlock(getTileX(originTile) + getXTileRange()), gridShift);
+        int tileMinX = tileCoordinateShiftingManager.blockToTile(shiftingManager.tileToBlock(getTileX(originTile) - getXTileRange()));
+        int tileMaxX = tileCoordinateShiftingManager.blockToTile(shiftingManager.tileToBlock(getTileX(originTile) + getXTileRange()));
 
         for (int tileX = tileMinX; tileX <= tileMaxX; tileX++) {
-            int linePos = (int) (getScreenCenterX() + getLocalXFromWorldX(tileToBlock(tileX, gridShift)));
+            int linePos = (int) (getScreenCenterX() + getLocalXFromWorldX(tileCoordinateShiftingManager.tileToBlock(tileX)));
             guiGraphics.fill(linePos - lineWidth, 0, linePos + lineWidth, (int) (height / scale), gridColor);
         }
 
-        int tileMinZ = blockToTile(tileToBlock(getTileZ(originTile) - getZTileRange()), gridShift);
-        int tileMaxZ = blockToTile(tileToBlock(getTileZ(originTile) + getZTileRange()), gridShift);
+        int tileMinZ = tileCoordinateShiftingManager.blockToTile(this.shiftingManager.tileToBlock(getTileZ(originTile) - getZTileRange()));
+        int tileMaxZ = tileCoordinateShiftingManager.blockToTile(this.shiftingManager.tileToBlock(getTileZ(originTile) + getZTileRange()));
 
         for (int tileZ = tileMinZ; tileZ <= tileMaxZ; tileZ++) {
-            int linePos = (int) (getScreenCenterZ() + getLocalZFromWorldZ(tileToBlock(tileZ, gridShift)));
+            int linePos = (int) (getScreenCenterZ() + getLocalZFromWorldZ(tileCoordinateShiftingManager.tileToBlock(tileZ)));
             guiGraphics.fill(0, linePos - lineWidth, (int) (width / scale), linePos + lineWidth, gridColor);
         }
 
         for (int tileX = tileMinX; tileX <= tileMaxX; tileX++) {
             for (int tileZ = tileMinZ; tileZ <= tileMaxZ; tileZ++) {
-                int worldX = tileToBlock(tileX, gridShift);
-                int worldZ = tileToBlock(tileZ, gridShift);
+                int worldX = tileCoordinateShiftingManager.tileToBlock(tileX);
+                int worldZ = tileCoordinateShiftingManager.tileToBlock(tileZ);
 
                 int xScreenPos = (int) (getScreenCenterX() + getLocalXFromWorldX(worldX));
                 int zScreenPos = (int) (getScreenCenterZ() + getLocalZFromWorldZ(worldZ));
@@ -449,10 +334,10 @@ public class WorldScreenv2 extends Screen {
                     this.origin.move(0, (int) delta, 0);
                 }
             } else {
-                int prevShift = shift;
-                shift = (int) Mth.clamp(shift - delta, 6, 24);
-                if (prevShift != shift) {
-                    tileSize = tileToBlock(1);
+                int prevShift = this.shiftingManager.getShift();
+                this.shiftingManager = new TileCoordinateShiftingManager((int) Mth.clamp(prevShift - delta, 6, 15));
+                if (prevShift != this.shiftingManager.getShift()) {
+                    tileSize = shiftingManager.tileToBlock(1);
                     sampleResolution = Math.max(1, tileSize >> 6);
 
                     if (delta > 0) {
@@ -484,65 +369,24 @@ public class WorldScreenv2 extends Screen {
         int zRange = getZTileRange();
         this.worldViewArea = BoundingBox.fromCorners(
                 new Vec3i(
-                        (int) Math.max(this.level.getWorldBorder().getMinX(), this.origin.getX() - tileToBlock(xRange) - 1),
+                        (int) Math.max(this.level.getWorldBorder().getMinX(), this.origin.getX() - shiftingManager.tileToBlock(xRange) - 1),
                         level.getMinBuildHeight(),
-                        (int) Math.max(this.level.getWorldBorder().getMinZ(), this.origin.getZ() - tileToBlock(zRange) - 1)
+                        (int) Math.max(this.level.getWorldBorder().getMinZ(), this.origin.getZ() - shiftingManager.tileToBlock(zRange) - 1)
                 ),
                 new Vec3i(
-                        (int) Math.min(this.level.getWorldBorder().getMaxX(), this.origin.getX() + tileToBlock(xRange) + 1),
+                        (int) Math.min(this.level.getWorldBorder().getMaxX(), this.origin.getX() + shiftingManager.tileToBlock(xRange) + 1),
                         level.getMaxBuildHeight(),
-                        (int) Math.min(this.level.getWorldBorder().getMaxZ(), this.origin.getZ() + tileToBlock(zRange) + 1)
+                        (int) Math.min(this.level.getWorldBorder().getMaxZ(), this.origin.getZ() + shiftingManager.tileToBlock(zRange) + 1)
                 )
         );
     }
 
-    public long tileKey(BlockPos pos) {
-        return LongPackingUtil.tileKey(blockToTile(pos.getX()), blockToTile(pos.getZ()));
+    public int getXTileRange() {
+        return this.shiftingManager.blockToTile(getScreenCenterX()) + 2;
     }
 
-    public int blockToTile(int blockCoord) {
-        return blockToTile(blockCoord, this.shift);
-    }
-
-    public int blockToTile(int blockCoord, int shift) {
-        return LongPackingUtil.blockToTile(blockCoord, shift);
-    }
-
-
-    public int tileToBlock(int tileCoord) {
-        return tileToBlock(tileCoord, this.shift);
-    }
-
-    public int tileToBlock(int tileCoord, int shift) {
-        return LongPackingUtil.tileToBlock(tileCoord, shift);
-    }
-
-    public int getScreenCenterX() {
-        return (int) ((this.width / 2) / scale);
-    }
-
-    public int getScreenCenterZ() {
-        return (int) ((this.height / 2) / scale);
-    }
-
-    public int getWorldXFromTileKey(long tileKey) {
-        return tileToBlock(getTileX(tileKey));
-    }
-
-    public int getWorldZFromTileKey(long tileKey) {
-        return tileToBlock(getTileZ(tileKey));
-    }
-
-    public int getTileLocalXFromWorldX(int worldX) {
-        return getTileX(getOriginTile()) - blockToTile(worldX);
-    }
-
-    public int getTileLocalZFromWorldZ(int worldZ) {
-        return getTileZ(getOriginTile()) - blockToTile(worldZ);
-    }
-
-    public long getOriginTile() {
-        return tileKey(this.origin);
+    public int getZTileRange() {
+        return this.shiftingManager.blockToTile(getScreenCenterZ()) + 2;
     }
 
     public double getLocalXFromWorldX(double worldX) {
@@ -553,51 +397,24 @@ public class WorldScreenv2 extends Screen {
         return this.origin.getZ() - worldZ;
     }
 
-    public int getXTileRange() {
-        return getXTileRange(this.shift);
+    public int getScreenCenterX() {
+        return (int) ((this.width / 2) / scale);
     }
 
-    public int getZTileRange() {
-        return getZTileRange(this.shift);
+    public int getScreenCenterZ() {
+        return (int) ((this.height / 2) / scale);
     }
 
-    public int getXTileRange(int shift) {
-        return blockToTile(getScreenCenterX(), shift) + 2;
+    public long getOriginTile() {
+        return this.shiftingManager.tileKey(this.origin);
     }
 
-    public int getZTileRange(int shift) {
-        return blockToTile(getScreenCenterZ(), shift) + 2;
+    public int getTileLocalXFromWorldX(int worldX) {
+        return getTileX(getOriginTile()) - this.shiftingManager.blockToTile(worldX);
     }
 
-
-    public Object2ObjectOpenHashMap<Holder<Structure>, StructureRender> getStructureRendering() {
-        return structureRendering;
+    public int getTileLocalZFromWorldZ(int worldZ) {
+        return getTileZ(getOriginTile()) - this.shiftingManager.blockToTile(worldZ);
     }
 
-
-    @FunctionalInterface
-    public interface StructureRender {
-
-        void render(GuiGraphics stack, int minDrawX, int minDrawZ, int maxDrawX, int maxDrawZ, float opacity);
-    }
-
-    private static class Slider extends AbstractSliderButton {
-
-        private final DoubleConsumer apply;
-
-        public Slider(int x, int y, int width, int height, Component message, double value, DoubleConsumer apply) {
-            super(x, y, width, height, message, value);
-            this.apply = apply;
-        }
-
-        @Override
-        protected void updateMessage() {
-
-        }
-
-        @Override
-        protected void applyValue() {
-            this.apply.accept(this.value);
-        }
-    }
 }
