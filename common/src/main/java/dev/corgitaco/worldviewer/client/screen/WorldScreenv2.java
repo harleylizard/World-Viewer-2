@@ -56,7 +56,7 @@ public class WorldScreenv2 extends Screen {
 
     public final BlockPos.MutableBlockPos origin = new BlockPos.MutableBlockPos();
 
-    float scale = 0.5F;
+    public float scale = 0.5F;
     public ServerLevel level;
 
     public BoundingBox worldViewArea;

@@ -1,6 +1,5 @@
 package dev.corgitaco.worldviewer.client;
 
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import corgitaco.corgilib.platform.ModPlatform;
@@ -8,7 +7,6 @@ import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.client.tile.RenderTile;
 import dev.corgitaco.worldviewer.client.tile.RenderTileOfTiles;
 import dev.corgitaco.worldviewer.client.tile.ScreenTile;
-import dev.corgitaco.worldviewer.client.tile.TileCoordinateShiftingManager;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import dev.corgitaco.worldviewer.util.LongPackingUtil;
@@ -16,16 +14,13 @@ import io.netty.util.internal.ConcurrentSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -69,22 +64,23 @@ public class RenderTileManager {
 
     private static void renderTiles(GuiGraphics graphics, WorldScreenv2 worldScreenv2, Collection<? extends ScreenTile> renderTiles) {
         PoseStack poseStack = graphics.pose();
-        for (ScreenTile tileToRender : renderTiles) {
+        renderTiles.forEach(tileToRender -> {
+            if (tileToRender != null) {
+                int localX = (int) worldScreenv2.getLocalXFromWorldX(tileToRender.getTileWorldX());
+                int localZ = (int) worldScreenv2.getLocalZFromWorldZ(tileToRender.getTileWorldZ());
 
-            int localX = (int) worldScreenv2.getLocalXFromWorldX(tileToRender.getTileWorldX());
-            int localZ = (int) worldScreenv2.getLocalZFromWorldZ(tileToRender.getTileWorldZ());
+                int screenTileMinX = (worldScreenv2.getScreenCenterX() + localX);
+                int screenTileMinZ = (worldScreenv2.getScreenCenterZ() + localZ);
 
-            int screenTileMinX = (worldScreenv2.getScreenCenterX() + localX);
-            int screenTileMinZ = (worldScreenv2.getScreenCenterZ() + localZ);
+                poseStack.pushPose();
+                poseStack.translate(screenTileMinX, screenTileMinZ, 0);
+                poseStack.mulPose(Axis.ZN.rotationDegrees(180));
 
-            poseStack.pushPose();
-            poseStack.translate(screenTileMinX, screenTileMinZ, 0);
-            poseStack.mulPose(Axis.ZN.rotationDegrees(180));
+                tileToRender.renderTile(graphics, worldScreenv2.scale);
 
-            tileToRender.renderTile(graphics);
-
-            poseStack.popPose();
-        }
+                poseStack.popPose();
+            }
+        });
     }
 
 
@@ -142,38 +138,87 @@ public class RenderTileManager {
             return true;
         });
 
-        this.loaded.forEach((tilePos, renderTile) -> {
-            int tileX = worldScreenv2.shiftingManager.getTileX(tilePos);
-            int tileZ = worldScreenv2.shiftingManager.getTileZ(tilePos);
+//        this.loaded.forEach((tilePos, renderTile) -> {
+//            int tileX = worldScreenv2.shiftingManager.getTileX(tilePos);
+//            int tileZ = worldScreenv2.shiftingManager.getTileZ(tilePos);
+//
+//            int scale = 2;
+//            int getNextScaleMinTileX = (tileX / scale) * scale;
+//            int getNextScaleMaxTileX = (getNextScaleMinTileX + scale);
+//
+//            int getNextScaleMinTileZ = (tileZ / scale) * scale;
+//            int getNextScaleMaxTileZ = (getNextScaleMinTileZ + scale);
+//            long minTileKey = LongPackingUtil.tileKey(getNextScaleMinTileX, getNextScaleMinTileZ);
+//
+//            if (!toRender.computeIfAbsent(scale, key1 -> new Long2ObjectLinkedOpenHashMap<>()).containsKey(minTileKey)) {
+//                int xRange = Math.abs(getNextScaleMaxTileX - getNextScaleMinTileX);
+//                int zRange = Math.abs(getNextScaleMaxTileZ - getNextScaleMinTileZ);
+//                ScreenTile[][] tilesToRender = new ScreenTile[xRange][zRange];
+//                for (int tileOffsetX = 0; tileOffsetX < xRange; tileOffsetX++) {
+//                    for (int tileOffsetZ = 0; tileOffsetZ < zRange; tileOffsetZ++) {
+//                        long tileKey = LongPackingUtil.tileKey(getNextScaleMinTileX + tileOffsetX, getNextScaleMinTileZ + tileOffsetZ);
+//                        RenderTile offset = loaded.get(tileKey);
+//                        if (offset != null && offset.getSampleRes() == worldScreenv2.sampleResolution) {
+//                            tilesToRender[tileOffsetX][tileOffsetZ] = offset;
+//                        } else {
+//                            return;
+//                        }
+//                    }
+//                }
+//
+//                toRender.computeIfAbsent(scale, key1 -> new Long2ObjectLinkedOpenHashMap<>()).put(minTileKey, new RenderTileOfTiles(tilesToRender));
+//            }
+//        });
 
-            int scale = 4;
-            int getNextScaleMinTileX = (tileX / scale) * scale;
-            int getNextScaleMaxTileX = (getNextScaleMinTileX + scale);
+        this.toRender.forEach((currentScale, tiles) -> {
+            int newScale = currentScale << 1;
 
-            int getNextScaleMinTileZ = (tileZ / scale) * scale;
-            int getNextScaleMaxTileZ = (getNextScaleMinTileZ + scale);
-            long minTileKey = LongPackingUtil.tileKey(getNextScaleMinTileX, getNextScaleMinTileZ);
+            if (newScale < 10) {
 
-            if (!toRender.computeIfAbsent(scale, key1 -> new Long2ObjectLinkedOpenHashMap<>()).containsKey(minTileKey)) {
-                int xRange = Math.abs(getNextScaleMaxTileX - getNextScaleMinTileX);
-                int zRange = Math.abs(getNextScaleMaxTileZ - getNextScaleMinTileZ);
-                ScreenTile[][] tilesToRender = new ScreenTile[xRange][zRange];
-                for (int tileOffsetX = 0; tileOffsetX < xRange; tileOffsetX++) {
-                    for (int tileOffsetZ = 0; tileOffsetZ < zRange; tileOffsetZ++) {
-                        long tileKey = LongPackingUtil.tileKey(getNextScaleMinTileX + tileOffsetX, getNextScaleMinTileZ + tileOffsetZ);
-                        RenderTile offset = loaded.get(tileKey);
-                        if (offset != null && offset.getSampleRes() == worldScreenv2.sampleResolution) {
-                            tilesToRender[tileOffsetX][tileOffsetZ] = offset;
-                        } else {
-                            return;
+                tiles.forEach((tilePos, tile) -> {
+
+                    int tileX = worldScreenv2.shiftingManager.getTileX(tilePos);
+                    int tileZ = worldScreenv2.shiftingManager.getTileZ(tilePos);
+
+                    int getNextScaleMinTileX = (tileX / newScale) * newScale;
+                    int getNextScaleMaxTileX = (getNextScaleMinTileX + newScale);
+
+                    int getNextScaleMinTileZ = (tileZ / newScale) * newScale;
+                    int getNextScaleMaxTileZ = (getNextScaleMinTileZ + newScale);
+
+                    long minTileKey = LongPackingUtil.tileKey(getNextScaleMinTileX, getNextScaleMinTileZ);
+
+                    if (!toRender.computeIfAbsent(newScale, key1 -> new ConcurrentHashMap<>()).containsKey(minTileKey)) {
+                        int xRange = Math.abs(getNextScaleMaxTileX - getNextScaleMinTileX);
+                        int zRange = Math.abs(getNextScaleMaxTileZ - getNextScaleMinTileZ);
+
+                        int xTileIncrement = xRange / 2;
+                        int zTileIncrement = zRange / 2;
+
+                        ScreenTile[][] tilesToRender = new ScreenTile[2][2];
+
+                        for (int tileOffsetX = 0; tileOffsetX < 2; tileOffsetX++) {
+                            for (int tileOffsetZ = 0; tileOffsetZ < 2; tileOffsetZ++) {
+                                int tileX1 = getNextScaleMinTileX + (tileOffsetX * xTileIncrement);
+                                int tileZ1 = getNextScaleMinTileZ + (tileOffsetZ * zTileIncrement);
+                                long tileKey = LongPackingUtil.tileKey(tileX1, tileZ1);
+
+                                ScreenTile offset = this.toRender.get(currentScale).get(tileKey);
+
+                                if (offset != null && offset.sampleResCheck(worldScreenv2.sampleResolution)) {
+                                    tilesToRender[tileOffsetX][tileOffsetZ] = offset;
+                                } else {
+                                    return;
+                                }
+                            }
                         }
+                        toRender.computeIfAbsent(newScale, key1 -> new ConcurrentHashMap<>()).put(minTileKey, new RenderTileOfTiles(tilesToRender, newScale));
                     }
-                }
-
-                toRender.computeIfAbsent(scale, key1 -> new Long2ObjectLinkedOpenHashMap<>()).put(minTileKey, new RenderTileOfTiles(tilesToRender));
+                });
             }
-
         });
+
+
 
         toSubmit.forEach(Runnable::run);
     }
@@ -215,6 +260,7 @@ public class RenderTileManager {
 
             RenderTile renderTile = new RenderTile(this.tileManager, TileLayer.FACTORY_REGISTRY, 63, x, z, tileSize, sampleResolution, worldScreenv2, lastResolution);
             RenderTile previous = loaded.put(tilePos, renderTile);
+            this.toRender.computeIfAbsent(1, key1 -> new ConcurrentHashMap<>()).put(tilePos, renderTile);
             if (previous != null && previous != renderTile) {
                 this.toClose.add(previous);
             }

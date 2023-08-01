@@ -41,6 +41,8 @@ public class RenderTile implements ScreenTile {
     private final int sampleRes;
     private WorldScreenv2 worldScreenv2;
 
+    private boolean shouldRender = true;
+
     private final LongSet sampledChunks = new LongOpenHashSet();
 
     public RenderTile(DataTileManager tileManager, Map<String, TileLayer.Factory> factories, int scrollY, int tileWorldX, int tileWorldZ, int size, int sampleRes, WorldScreenv2 worldScreenv2, @Nullable RenderTile lastResolution) {
@@ -82,15 +84,17 @@ public class RenderTile implements ScreenTile {
     }
 
     @Override
-    public void renderTile(GuiGraphics guiGraphics) {
-        this.tileLayerImages.get().forEach((s, nativeImage) -> {
-            DynamicTexture dynamicTexture = textureMap.computeIfAbsent(s, key1 -> new DynamicTexture(nativeImage));
+    public void renderTile(GuiGraphics guiGraphics, float scale) {
+        if (shouldRender) {
+            this.tileLayerImages.get().forEach((s, nativeImage) -> {
+                DynamicTexture dynamicTexture = textureMap.computeIfAbsent(s, key1 -> new DynamicTexture(nativeImage));
 
-            RenderSystem.setShaderColor(1, 1, 1, 1);
-            RenderSystem.setShaderTexture(0, dynamicTexture.getId());
-            ClientUtil.blit(guiGraphics.pose(), 0,0,0F,0F, this.size, this.size, this.size, this.size);
-            RenderSystem.setShaderColor(1, 1, 1, 1);
-        });
+                RenderSystem.setShaderColor(1, 1, 1, 1);
+                RenderSystem.setShaderTexture(0, dynamicTexture.getId());
+                ClientUtil.blit(guiGraphics.pose(), 0, 0, 0F, 0F, this.size, this.size, this.size, this.size);
+                RenderSystem.setShaderColor(1, 1, 1, 1);
+            });
+        }
     }
 
     @Override
@@ -110,5 +114,28 @@ public class RenderTile implements ScreenTile {
 
     public int getSize() {
         return size;
+    }
+
+    @Override
+    public boolean sampleResCheck(int worldScreenSampleRes) {
+        return this.sampleRes == worldScreenSampleRes;
+    }
+
+    @Override
+    public boolean shouldRender() {
+        return this.shouldRender;
+    }
+
+    @Override
+    public void setShouldRender(boolean shouldRender) {
+        this.shouldRender = shouldRender;
+    }
+
+    @Override
+    public void close() {
+        this.textureMap.values().removeIf(dynamicTexture -> {
+            dynamicTexture.releaseId();
+            return true;
+        });
     }
 }

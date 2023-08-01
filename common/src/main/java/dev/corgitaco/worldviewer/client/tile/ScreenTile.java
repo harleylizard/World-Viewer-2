@@ -14,9 +14,17 @@ public interface ScreenTile {
 
     int getTileWorldZ();
 
-    void renderTile(GuiGraphics guiGraphics);
+    void renderTile(GuiGraphics guiGraphics, float scale);
 
     Map<String, NativeImage> layers();
 
     int size();
+
+    boolean sampleResCheck(int worldScreenSampleRes);
+
+    boolean shouldRender();
+
+    void setShouldRender(boolean shouldRender);
+
+    void close();
 }
