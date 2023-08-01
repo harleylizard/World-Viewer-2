@@ -17,15 +17,21 @@ public class RenderTileOfTiles implements ScreenTile {
 
     private boolean shouldRender = true;
 
-    private final int worldX;
-    private final int worldZ;
+    private final int minWorldX;
+    private final int minWorldZ;
+
+    private final int maxWorldX;
+    private final int maxWorldZ;
 
     private final int size;
     private final int scale;
 
     public RenderTileOfTiles(ScreenTile[][] delegates, int scale) {
-        this.worldX = delegates[0][0].getTileWorldX();
-        this.worldZ = delegates[0][0].getTileWorldZ();
+        this.minWorldX = delegates[0][0].getMinTileWorldX();
+        this.minWorldZ = delegates[0][0].getMinTileWorldZ();
+        this.maxWorldX = delegates[delegates.length - 1][delegates.length - 1].getMaxTileWorldX();
+        this.maxWorldZ = delegates[delegates.length - 1][delegates.length - 1].getMaxTileWorldZ();
+
         this.size = delegates[0][0].size() * delegates[0].length;
         this.scale = scale;
 
@@ -66,13 +72,23 @@ public class RenderTileOfTiles implements ScreenTile {
 
 
     @Override
-    public int getTileWorldX() {
-        return this.worldX;
+    public int getMinTileWorldX() {
+        return this.minWorldX;
     }
 
     @Override
-    public int getTileWorldZ() {
-        return this.worldZ;
+    public int getMinTileWorldZ() {
+        return this.minWorldZ;
+    }
+
+    @Override
+    public int getMaxTileWorldX() {
+        return this.maxWorldX;
+    }
+
+    @Override
+    public int getMaxTileWorldZ() {
+        return this.maxWorldZ;
     }
 
     @Override

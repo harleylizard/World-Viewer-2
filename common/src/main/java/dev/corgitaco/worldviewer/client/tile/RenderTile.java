@@ -35,8 +35,11 @@ public class RenderTile implements ScreenTile {
 
 
     private DataTileManager tileManager;
-    private final int tileWorldX;
-    private final int tileWorldZ;
+    private final int minTileWorldX;
+    private final int minTileWorldZ;
+
+    private final int maxTileWorldX;
+    private final int maxTileWorldZ;
     private final int size;
     private final int sampleRes;
     private WorldScreenv2 worldScreenv2;
@@ -45,10 +48,13 @@ public class RenderTile implements ScreenTile {
 
     private final LongSet sampledChunks = new LongOpenHashSet();
 
-    public RenderTile(DataTileManager tileManager, Map<String, TileLayer.Factory> factories, int scrollY, int tileWorldX, int tileWorldZ, int size, int sampleRes, WorldScreenv2 worldScreenv2, @Nullable RenderTile lastResolution) {
+    public RenderTile(DataTileManager tileManager, Map<String, TileLayer.Factory> factories, int scrollY, int minTileWorldX, int minTileWorldZ, int size, int sampleRes, WorldScreenv2 worldScreenv2, @Nullable RenderTile lastResolution) {
         this.tileManager = tileManager;
-        this.tileWorldX = tileWorldX;
-        this.tileWorldZ = tileWorldZ;
+        this.minTileWorldX = minTileWorldX;
+        this.minTileWorldZ = minTileWorldZ;
+
+        this.maxTileWorldX = minTileWorldX + (size);
+        this.maxTileWorldZ = minTileWorldZ + (size);
         this.size = size;
         this.sampleRes = sampleRes;
         this.worldScreenv2 = worldScreenv2;
@@ -62,7 +68,7 @@ public class RenderTile implements ScreenTile {
                 }
             });
         }
-        factories.forEach((s, factory) -> tileLayers.computeIfAbsent(s, (s1) -> factory.make(tileManager, scrollY, tileWorldX, tileWorldZ, size, sampleRes, worldScreenv2, sampledChunks)));
+        factories.forEach((s, factory) -> tileLayers.computeIfAbsent(s, (s1) -> factory.make(tileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, worldScreenv2, sampledChunks)));
         if (sampleRes == worldScreenv2.sampleResolution) {
             sampledChunks.forEach(tileManager::unloadTile);
         }
@@ -75,12 +81,22 @@ public class RenderTile implements ScreenTile {
         return this.tileLayers.values().stream().map(tileLayer -> tileLayer.toolTip(mouseScreenX, mouseScreenY, mouseWorldX, mouseWorldZ, mouseTileLocalX, mouseTileLocalY)).filter(Objects::nonNull).map(mutableComponent -> (Component) mutableComponent).collect(Collectors.toList());
     }
 
-    public int getTileWorldX() {
-        return tileWorldX;
+    public int getMinTileWorldX() {
+        return minTileWorldX;
     }
 
-    public int getTileWorldZ() {
-        return tileWorldZ;
+    public int getMinTileWorldZ() {
+        return minTileWorldZ;
+    }
+
+    @Override
+    public int getMaxTileWorldX() {
+        return this.maxTileWorldX;
+    }
+
+    @Override
+    public int getMaxTileWorldZ() {
+        return maxTileWorldZ;
     }
 
     @Override

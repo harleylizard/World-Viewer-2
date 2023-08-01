@@ -1,18 +1,20 @@
 package dev.corgitaco.worldviewer.client.tile;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import net.minecraft.client.gui.GuiGraphics;
 
-import java.util.List;
 import java.util.Map;
 
 public interface ScreenTile {
 
 
-    int getTileWorldX();
+    int getMinTileWorldX();
 
-    int getTileWorldZ();
+    int getMinTileWorldZ();
+
+
+    int getMaxTileWorldX();
+    int getMaxTileWorldZ();
 
     void renderTile(GuiGraphics guiGraphics, float scale);
 

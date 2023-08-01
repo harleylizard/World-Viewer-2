@@ -125,9 +125,11 @@ public class WorldScreenv2 extends Screen {
 
         drawGrid(guiGraphics);
 
-//        drawPlayers(stack);
+        drawPlayers(stack);
 
         stack.popPose();
+
+        guiGraphics.drawString(Minecraft.getInstance().font, minecraft.fpsString, 0, 0, FastColor.ARGB32.color(255, 255, 255, 255));
 
         if (!overWidget(mouseX, mouseY)) {
             renderToolTip(guiGraphics, mouseX, mouseY);
@@ -143,8 +145,8 @@ public class WorldScreenv2 extends Screen {
 
         List<Component> toolTip = buildToolTip(mouseWorldPos, this.renderTileManager.getDataTileManager());
         if (renderTile != null) {
-            int mouseTileLocalX = (mouseWorldPos.getX() - renderTile.getTileWorldX());
-            int mouseTileLocalY = (mouseWorldPos.getZ() - renderTile.getTileWorldZ());
+            int mouseTileLocalX = (mouseWorldPos.getX() - renderTile.getMinTileWorldX());
+            int mouseTileLocalY = (mouseWorldPos.getZ() - renderTile.getMinTileWorldZ());
             toolTip.addAll(renderTile.toolTip(mouseX, mouseY, mouseWorldPos.getX(), mouseWorldPos.getZ(), mouseTileLocalX, mouseTileLocalY));
             toolTip.add(Component.literal("Sample Resolution: %s blocks".formatted(renderTile.getSampleRes())));
             toolTip.add(Component.literal("Tile size: %s blocks ".formatted(renderTile.getSize())));
