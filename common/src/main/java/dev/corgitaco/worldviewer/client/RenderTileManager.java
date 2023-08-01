@@ -13,8 +13,6 @@ import dev.corgitaco.worldviewer.util.LongPackingUtil;
 import io.netty.util.internal.ConcurrentSet;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.*;
-import net.daporkchop.lib.primitive.map.concurrent.IntObjConcurrentHashMap;
-import net.daporkchop.lib.primitive.map.concurrent.LongObjConcurrentHashMap;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -25,8 +23,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 public class RenderTileManager {
     private ExecutorService executorService = createExecutor();
@@ -36,8 +36,8 @@ public class RenderTileManager {
     private final ServerLevel level;
     private final BlockPos origin;
 
-    public final Map<Long, RenderTile> loaded = new ConcurrentHashMap<>();
-    public final IntObjConcurrentHashMap<LongObjConcurrentHashMap<ScreenTile>> toRender = new IntObjConcurrentHashMap<>();
+    public final Long2ObjectOpenHashMap<RenderTile> loaded = new Long2ObjectOpenHashMap<>();
+    public final Int2ObjectOpenHashMap<Long2ObjectOpenHashMap<ScreenTile>> toRender = new Int2ObjectOpenHashMap<>();
 
     public final ConcurrentSet<RenderTile> toClose = new ConcurrentSet<>();
 
@@ -100,7 +100,9 @@ public class RenderTileManager {
         LongSet toRemove = new LongOpenHashSet();
 
         List<Runnable> toSubmit = new ArrayList<>();
-        trackedTileFutures.forEach((tilePos, future) -> {
+        trackedTileFutures.long2ObjectEntrySet().fastForEach(entry -> {
+            long tilePos = entry.getLongKey();
+            CompletableFuture<RenderTile> future = entry.getValue();
             if (future.isCompletedExceptionally()) {
                 try {
                     future.getNow(null);
@@ -127,6 +129,12 @@ public class RenderTileManager {
                         if (newSampleRes >= worldScreenv2.sampleResolution) {
                             submitTileFuture(worldScreenv2, renderTile.getSize(), tilePos, newSampleRes, renderTile);
                         }
+
+                        RenderTile previous = loaded.put(tilePos, renderTile);
+                        this.toRender.computeIfAbsent(1, key1 -> new Long2ObjectOpenHashMap<>()).put(tilePos, renderTile);
+                        if (previous != null && previous != renderTile) {
+                            this.toClose.add(previous);
+                        }
                     }
                 });
             }
@@ -139,44 +147,18 @@ public class RenderTileManager {
             return true;
         });
 
-//        this.loaded.forEach((tilePos, renderTile) -> {
-//            int tileX = worldScreenv2.shiftingManager.getTileX(tilePos);
-//            int tileZ = worldScreenv2.shiftingManager.getTileZ(tilePos);
-//
-//            int scale = 2;
-//            int getNextScaleMinTileX = (tileX / scale) * scale;
-//            int getNextScaleMaxTileX = (getNextScaleMinTileX + scale);
-//
-//            int getNextScaleMinTileZ = (tileZ / scale) * scale;
-//            int getNextScaleMaxTileZ = (getNextScaleMinTileZ + scale);
-//            long minTileKey = LongPackingUtil.tileKey(getNextScaleMinTileX, getNextScaleMinTileZ);
-//
-//            if (!toRender.computeIfAbsent(scale, key1 -> new Long2ObjectLinkedOpenHashMap<>()).containsKey(minTileKey)) {
-//                int xRange = Math.abs(getNextScaleMaxTileX - getNextScaleMinTileX);
-//                int zRange = Math.abs(getNextScaleMaxTileZ - getNextScaleMinTileZ);
-//                ScreenTile[][] tilesToRender = new ScreenTile[xRange][zRange];
-//                for (int tileOffsetX = 0; tileOffsetX < xRange; tileOffsetX++) {
-//                    for (int tileOffsetZ = 0; tileOffsetZ < zRange; tileOffsetZ++) {
-//                        long tileKey = LongPackingUtil.tileKey(getNextScaleMinTileX + tileOffsetX, getNextScaleMinTileZ + tileOffsetZ);
-//                        RenderTile offset = loaded.get(tileKey);
-//                        if (offset != null && offset.getSampleRes() == worldScreenv2.sampleResolution) {
-//                            tilesToRender[tileOffsetX][tileOffsetZ] = offset;
-//                        } else {
-//                            return;
-//                        }
-//                    }
-//                }
-//
-//                toRender.computeIfAbsent(scale, key1 -> new Long2ObjectLinkedOpenHashMap<>()).put(minTileKey, new RenderTileOfTiles(tilesToRender));
-//            }
-//        });
 
         List<Runnable> toRun = new ArrayList<>();
-        this.toRender.forEach((currentScale, tiles) -> {
+        this.toRender.int2ObjectEntrySet().fastForEach((entry) -> {
+            int currentScale = entry.getIntKey();
+            Long2ObjectOpenHashMap<ScreenTile> tiles = entry.getValue();
+
             int newScale = currentScale << 1;
 
 
-            tiles.forEach((tilePos, tile) -> {
+            tiles.long2ObjectEntrySet().fastForEach(screenTileEntry -> {
+                long tilePos = screenTileEntry.getLongKey();
+                ScreenTile screenTile = screenTileEntry.getValue();
 
                 int tileX = worldScreenv2.shiftingManager.getTileX(tilePos);
                 int tileZ = worldScreenv2.shiftingManager.getTileZ(tilePos);
@@ -189,7 +171,7 @@ public class RenderTileManager {
 
                 long minTileKey = LongPackingUtil.tileKey(getNextScaleMinTileX, getNextScaleMinTileZ);
 
-                if (!toRender.computeIfAbsent(newScale, key1 -> new LongObjConcurrentHashMap<>()).containsKey(minTileKey)) {
+                if (!toRender.computeIfAbsent(newScale, key1 -> new Long2ObjectOpenHashMap<>()).containsKey(minTileKey)) {
                     int xRange = Math.abs(getNextScaleMaxTileX - getNextScaleMinTileX);
                     int zRange = Math.abs(getNextScaleMaxTileZ - getNextScaleMinTileZ);
 
@@ -215,9 +197,8 @@ public class RenderTileManager {
                             }
                         }
                     }
-                    toRender.computeIfAbsent(newScale, key1 -> new LongObjConcurrentHashMap<>()).put(minTileKey, new RenderTileOfTiles(tilesToRender, newScale));
-
                     toRun.add(() -> {
+                        toRender.computeIfAbsent(newScale, key1 -> new Long2ObjectOpenHashMap<>()).put(minTileKey, new RenderTileOfTiles(tilesToRender, newScale));
                         for (long pos : positions) {
                             toRender.get(currentScale).remove(pos);
                         }
@@ -266,13 +247,8 @@ public class RenderTileManager {
             var x = worldScreenv2.shiftingManager.getWorldXFromTileKey(tilePos);
             var z = worldScreenv2.shiftingManager.getWorldZFromTileKey(tilePos);
 
-            RenderTile renderTile = new RenderTile(this.tileManager, TileLayer.FACTORY_REGISTRY, 63, x, z, tileSize, sampleResolution, worldScreenv2, lastResolution);
-            RenderTile previous = loaded.put(tilePos, renderTile);
-            this.toRender.computeIfAbsent(1, key1 -> new LongObjConcurrentHashMap<>()).put(tilePos, renderTile);
-            if (previous != null && previous != renderTile) {
-                this.toClose.add(previous);
-            }
-            return renderTile;
+            RenderTile tile = new RenderTile(this.tileManager, TileLayer.FACTORY_REGISTRY, 63, x, z, tileSize, sampleResolution, worldScreenv2, lastResolution);
+            return tile;
         }, executorService));
     }
 
@@ -291,29 +267,36 @@ public class RenderTileManager {
 
         Int2ObjectOpenHashMap<LongList> toRemoveRender = new Int2ObjectOpenHashMap<>();
 
-
-        this.toRender.forEach((scale, tiles) -> {
+        this.toRender.int2ObjectEntrySet().fastForEach(entry -> {
+            int scale = entry.getIntKey();
+            Long2ObjectOpenHashMap<ScreenTile> tiles = entry.getValue();
             LongList longs = toRemoveRender.computeIfAbsent(scale, key -> new LongArrayList());
-            tiles.forEach((pos, tile) -> {
+
+            tiles.long2ObjectEntrySet().fastForEach(screenTileEntry -> {
+                long tilePos = screenTileEntry.getLongKey();
+                ScreenTile tile = screenTileEntry.getValue();
+
                 int minTileWorldX = tile.getMinTileWorldX();
                 int minTileWorldZ = tile.getMinTileWorldZ();
                 int maxTileWorldX = tile.getMaxTileWorldX();
                 int maxTileWorldZ = tile.getMaxTileWorldZ();
                 if (!worldScreenv2.worldViewArea.intersects(minTileWorldX, minTileWorldZ, maxTileWorldX, maxTileWorldZ)) {
-                tile.close();
-                    longs.add(pos);
+                    tile.close();
+                    longs.add(tilePos);
                 }
             });
         });
 
-        toRemoveRender.forEach((scale, tiles) -> {
-            LongObjConcurrentHashMap<ScreenTile> longScreenTileMap = this.toRender.get(scale);
+        toRemoveRender.int2ObjectEntrySet().fastForEach(longListEntry -> {
+            int scale = longListEntry.getIntKey();
+            LongList tiles = longListEntry.getValue();
+            Long2ObjectOpenHashMap<ScreenTile> longScreenTileMap = this.toRender.get(scale);
             tiles.forEach(key -> {
                 ScreenTile remove = longScreenTileMap.remove(key);
                 if (remove != null) {
                     remove.close();
                 }
-            } );
+            });
 
             if (longScreenTileMap.isEmpty()) {
                 this.toRender.remove(scale);

@@ -19,9 +19,9 @@ dependencies {
      implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.1'
      compileOnly("org.ow2.asm:asm-tree:9.5")
      compileOnly("maven.modrinth:corgilib:${minecraft_version}-${corgilib_version}-forge")
-     ("net.daporkchop.lib:common:0.5.7-SNAPSHOT")
-     compileOnly("net.daporkchop.lib:primitive:0.5.7-SNAPSHOT")
-     compileOnly("net.daporkchop.lib:concurrent:0.5.7-SNAPSHOT")
+//     compileOnly("net.daporkchop.lib:common:0.5.7-SNAPSHOT")
+//     compileOnly("net.daporkchop.lib:primitive:0.5.7-SNAPSHOT")
+//     compileOnly("net.daporkchop.lib:concurrent:0.5.7-SNAPSHOT")
 }
 
 publishing {
