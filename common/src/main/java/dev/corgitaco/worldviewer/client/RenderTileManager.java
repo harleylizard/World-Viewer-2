@@ -13,6 +13,8 @@ import dev.corgitaco.worldviewer.util.LongPackingUtil;
 import io.netty.util.internal.ConcurrentSet;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.*;
+import net.daporkchop.lib.primitive.map.concurrent.IntObjConcurrentHashMap;
+import net.daporkchop.lib.primitive.map.concurrent.LongObjConcurrentHashMap;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -35,7 +37,7 @@ public class RenderTileManager {
     private final BlockPos origin;
 
     public final Map<Long, RenderTile> loaded = new ConcurrentHashMap<>();
-    public final Map<Integer, Map<Long, ScreenTile>> toRender = new ConcurrentHashMap<>();
+    public final IntObjConcurrentHashMap<LongObjConcurrentHashMap<ScreenTile>> toRender = new IntObjConcurrentHashMap<>();
 
     public final ConcurrentSet<RenderTile> toClose = new ConcurrentSet<>();
 
@@ -187,7 +189,7 @@ public class RenderTileManager {
 
                 long minTileKey = LongPackingUtil.tileKey(getNextScaleMinTileX, getNextScaleMinTileZ);
 
-                if (!toRender.computeIfAbsent(newScale, key1 -> new ConcurrentHashMap<>()).containsKey(minTileKey)) {
+                if (!toRender.computeIfAbsent(newScale, key1 -> new LongObjConcurrentHashMap<>()).containsKey(minTileKey)) {
                     int xRange = Math.abs(getNextScaleMaxTileX - getNextScaleMinTileX);
                     int zRange = Math.abs(getNextScaleMaxTileZ - getNextScaleMinTileZ);
 
@@ -213,7 +215,7 @@ public class RenderTileManager {
                             }
                         }
                     }
-                    toRender.computeIfAbsent(newScale, key1 -> new ConcurrentHashMap<>()).put(minTileKey, new RenderTileOfTiles(tilesToRender, newScale));
+                    toRender.computeIfAbsent(newScale, key1 -> new LongObjConcurrentHashMap<>()).put(minTileKey, new RenderTileOfTiles(tilesToRender, newScale));
 
                     toRun.add(() -> {
                         for (long pos : positions) {
@@ -266,7 +268,7 @@ public class RenderTileManager {
 
             RenderTile renderTile = new RenderTile(this.tileManager, TileLayer.FACTORY_REGISTRY, 63, x, z, tileSize, sampleResolution, worldScreenv2, lastResolution);
             RenderTile previous = loaded.put(tilePos, renderTile);
-            this.toRender.computeIfAbsent(1, key1 -> new ConcurrentHashMap<>()).put(tilePos, renderTile);
+            this.toRender.computeIfAbsent(1, key1 -> new LongObjConcurrentHashMap<>()).put(tilePos, renderTile);
             if (previous != null && previous != renderTile) {
                 this.toClose.add(previous);
             }
@@ -299,13 +301,13 @@ public class RenderTileManager {
                 int maxTileWorldZ = tile.getMaxTileWorldZ();
                 if (!worldScreenv2.worldViewArea.intersects(minTileWorldX, minTileWorldZ, maxTileWorldX, maxTileWorldZ)) {
                 tile.close();
-                    longs.add(pos.longValue());
+                    longs.add(pos);
                 }
             });
         });
 
         toRemoveRender.forEach((scale, tiles) -> {
-            Map<Long, ScreenTile> longScreenTileMap = this.toRender.get(scale);
+            LongObjConcurrentHashMap<ScreenTile> longScreenTileMap = this.toRender.get(scale);
             tiles.forEach(key -> {
                 ScreenTile remove = longScreenTileMap.remove(key);
                 if (remove != null) {

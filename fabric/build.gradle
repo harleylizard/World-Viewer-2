@@ -18,9 +18,16 @@ tasks.build.dependsOn(tasks.shadowJar)
 configurations {
     shadow
     implementation.extendsFrom(shadow)
+
+    all {
+        resolutionStrategy {
+            force 'io.netty:netty-common:4.1.82.Final'
+        }
+    }
 }
 shadowJar {
     configurations = [project.configurations.shadow]
+    relocate 'net.daporkchop', "${project.group}.shadow.net.daporkchop"
 }
 
 base {
@@ -34,6 +41,9 @@ dependencies {
     implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.1'
     modImplementation("maven.modrinth:corgilib:${minecraft_version}-${corgilib_version}-fabric")
     implementation project(":common")
+    shadow("net.daporkchop.lib:common:0.5.7-SNAPSHOT")
+    shadow("net.daporkchop.lib:primitive:0.5.7-SNAPSHOT")
+    shadow("net.daporkchop.lib:concurrent:0.5.7-SNAPSHOT")
 }
 
 loom {
@@ -86,6 +96,9 @@ publishing {
         }
     }
 }
+
+remapJar.inputFile.set(shadowJar.archiveFile)
+
 
 task fabric_checkForRefmap() {
     doLast {

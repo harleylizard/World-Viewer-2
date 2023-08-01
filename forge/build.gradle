@@ -35,6 +35,13 @@ configurations {
 
     dataImplementation.extendsFrom implementation
     dataCompileOnly.extendsFrom compileOnly
+
+
+    all {
+        resolutionStrategy {
+            force 'io.netty:netty-common:4.1.82.Final'
+        }
+    }
 }
 
 sourceSets {
@@ -52,6 +59,7 @@ archivesBaseName = "${mod_name}-forge-${minecraft_version}"
 shadowJar {
     configurations = [project.configurations.shadow]
     archiveClassifier.set('')
+    relocate 'net.daporkchop', "${project.group}.shadow.net.daporkchop"
 }
 reobf {
     shadowJar {
@@ -132,6 +140,9 @@ dependencies {
     compileOnly project(":common")
     annotationProcessor("org.spongepowered:mixin:0.8.5-SNAPSHOT:processor")
     implementation fg.deobf("maven.modrinth:corgilib:${minecraft_version}-${corgilib_version}-forge")
+    shadow("net.daporkchop.lib:common:0.5.7-SNAPSHOT")
+    shadow("net.daporkchop.lib:primitive:0.5.7-SNAPSHOT")
+    shadow("net.daporkchop.lib:concurrent:0.5.7-SNAPSHOT")
 }
 
 tasks.withType(JavaCompile).configureEach {

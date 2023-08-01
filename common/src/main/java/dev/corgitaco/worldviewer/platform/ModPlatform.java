@@ -1,5 +1,6 @@
 package dev.corgitaco.worldviewer.platform;
 
+import com.google.common.base.Suppliers;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.RegistryAccess;
@@ -20,7 +21,7 @@ import java.util.function.Supplier;
 
 public interface ModPlatform {
 
-    ModPlatform INSTANCE = Util.make(() -> {
+    ModPlatform INSTANCE = Suppliers.memoize(() -> {
         final var loader = ServiceLoader.load(ModPlatform.class);
         final var it = loader.iterator();
         if (!it.hasNext()) {
@@ -32,7 +33,7 @@ public interface ModPlatform {
             }
             return factory;
         }
-    });
+    }).get();
 
     Path configPath();
 

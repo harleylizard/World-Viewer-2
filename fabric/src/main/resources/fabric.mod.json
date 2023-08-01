@@ -1,6 +1,6 @@
 {
     "schemaVersion": 1,
-    "id": "mod_id",
+    "id": "${mod_id}",
     "version": "${version}",
     "name": "${mod_name}",
     "description": "",
@@ -19,6 +19,7 @@
             "dev.corgitaco.worldviewer.WorldViewerFabric"
         ]
     },
+    "accessWidener": "worldviewer.accesswidener",
     "mixins": [
         "worldviewer.mixins.json",
         "worldviewer.fabric.mixins.json"
