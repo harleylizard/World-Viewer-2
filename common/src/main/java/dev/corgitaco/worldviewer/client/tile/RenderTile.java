@@ -1,6 +1,7 @@
 package dev.corgitaco.worldviewer.client.tile;
 
 import com.google.common.base.Suppliers;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import dev.corgitaco.worldviewer.client.ClientUtil;
@@ -12,6 +13,7 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FastColor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -26,7 +28,10 @@ public class RenderTile implements ScreenTile {
         HashMap<String, NativeImage> map = new HashMap<>();
 
         tileLayers.forEach(((s, tileLayer) -> {
-            map.put(s, tileLayer.image());
+            NativeImage image = tileLayer.image();
+            if (image != null) {
+                map.put(s, image);
+            }
         }));
 
         return map;
@@ -81,6 +86,13 @@ public class RenderTile implements ScreenTile {
         return this.tileLayers.values().stream().map(tileLayer -> tileLayer.toolTip(mouseScreenX, mouseScreenY, mouseWorldX, mouseWorldZ, mouseTileLocalX, mouseTileLocalY)).filter(Objects::nonNull).map(mutableComponent -> (Component) mutableComponent).collect(Collectors.toList());
     }
 
+
+    public void afterTilesRender(GuiGraphics guiGraphics, float opacity) {
+        this.tileLayers.forEach((s, tileLayer) -> {
+            tileLayer.afterTilesRender(guiGraphics, opacity, getMinTileWorldX(), getMinTileWorldZ());
+        });
+    }
+
     public int getMinTileWorldX() {
         return minTileWorldX;
     }
@@ -102,6 +114,7 @@ public class RenderTile implements ScreenTile {
     @Override
     public void renderTile(GuiGraphics guiGraphics, float scale) {
         if (shouldRender) {
+            RenderSystem.blendFunc(GlStateManager.SourceFactor.DST_COLOR,  GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
             this.tileLayerImages.get().forEach((s, nativeImage) -> {
                 DynamicTexture dynamicTexture = textureMap.computeIfAbsent(s, key1 -> new DynamicTexture(nativeImage));
 
@@ -109,7 +122,10 @@ public class RenderTile implements ScreenTile {
                 RenderSystem.setShaderTexture(0, dynamicTexture.getId());
                 ClientUtil.blit(guiGraphics.pose(), 0, 0, 0F, 0F, this.size, this.size, this.size, this.size);
                 RenderSystem.setShaderColor(1, 1, 1, 1);
+//                ClientUtil.drawOutlineWithWidth(guiGraphics, 0, 0, this.size, this.size, (int) Math.ceil(1.5 / scale), FastColor.ARGB32.color(255, 0, 255, 0));
+
             });
+            RenderSystem.disableBlend();
         }
     }
 

@@ -7,6 +7,7 @@ import com.mojang.blaze3d.vertex.*;
 import dev.corgitaco.worldviewer.mixin.KeyMappingAccess;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
@@ -27,6 +28,17 @@ public class ClientUtil {
         } else {
             return InputConstants.isKeyDown(window, keyValue);
         }
+    }
+
+    public static void drawOutlineWithWidth(GuiGraphics guiGraphics, int x1, int y1, int x2, int y2, int lineWidth, int color) {
+        // Bottom Line
+        guiGraphics.fill(x1, y1 + -lineWidth, x2, y1 + lineWidth, color);
+        // Top Line
+        guiGraphics.fill(x1, y2 + -lineWidth, x2, y2 + lineWidth, color);
+        // Left Line
+        guiGraphics.fill(x1 + -lineWidth, y1, x1 + lineWidth, y2, color);
+        // Right Line
+        guiGraphics.fill(x2 + -lineWidth, y1, x2 + lineWidth, y2, color);
     }
 
     public static void blit(PoseStack matrixStack, int x, int y, int blitOffset, float uOffset, float vOffset, int uWidth, int vHeight, int textureHeight, int textureWidth) {

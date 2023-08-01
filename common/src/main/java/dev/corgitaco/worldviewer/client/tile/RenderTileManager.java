@@ -1,4 +1,4 @@
-package dev.corgitaco.worldviewer.client;
+package dev.corgitaco.worldviewer.client.tile;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
@@ -61,6 +61,7 @@ public class RenderTileManager {
         this.toRender.forEach((scale, tiles) -> {
             renderTiles(guiGraphics, this.worldScreenv2, tiles.values());
         });
+        afterTilesRender(guiGraphics, worldScreenv2, this.loaded.values());
     }
 
     private static void renderTiles(GuiGraphics graphics, WorldScreenv2 worldScreenv2, Collection<? extends ScreenTile> renderTiles) {
@@ -78,6 +79,27 @@ public class RenderTileManager {
                 poseStack.mulPose(Axis.ZN.rotationDegrees(180));
 
                 tileToRender.renderTile(graphics, worldScreenv2.scale);
+
+                poseStack.popPose();
+            }
+        });
+    }
+
+    private static void afterTilesRender(GuiGraphics graphics, WorldScreenv2 worldScreenv2, Collection<? extends RenderTile> renderTiles) {
+        PoseStack poseStack = graphics.pose();
+        renderTiles.forEach(tileToRender -> {
+            if (tileToRender != null) {
+                int localX = (int) worldScreenv2.getLocalXFromWorldX(tileToRender.getMinTileWorldX());
+                int localZ = (int) worldScreenv2.getLocalZFromWorldZ(tileToRender.getMinTileWorldZ());
+
+                int screenTileMinX = (worldScreenv2.getScreenCenterX() + localX);
+                int screenTileMinZ = (worldScreenv2.getScreenCenterZ() + localZ);
+
+                poseStack.pushPose();
+                poseStack.translate(screenTileMinX, screenTileMinZ, 0);
+                poseStack.mulPose(Axis.ZN.rotationDegrees(180));
+
+                tileToRender.afterTilesRender(graphics, 1F);
 
                 poseStack.popPose();
             }

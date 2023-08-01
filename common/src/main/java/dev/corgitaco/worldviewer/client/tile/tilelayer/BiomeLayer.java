@@ -36,18 +36,6 @@ public class BiomeLayer extends TileLayer {
         this.image = makeNativeImageFromColorData(colorData);
     }
 
-    public static NativeImage makeNativeImageFromColorData(int[][] data) {
-        NativeImage nativeImage = new NativeImage(data.length, data.length, true);
-        for (int x = 0; x < data.length; x++) {
-            int[] colorRow = data[x];
-            for (int y = 0; y < colorRow.length; y++) {
-                int color = colorRow[y];
-                nativeImage.setPixelRGBA(x, y, color);
-            }
-        }
-        return nativeImage;
-    }
-
     private static int[][] buildImage(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
         int sampledSize = size / sampleResolution;
 

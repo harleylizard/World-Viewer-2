@@ -4,7 +4,8 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.ClientUtil;
-import dev.corgitaco.worldviewer.client.RenderTileManager;
+import dev.corgitaco.worldviewer.client.StructureIconRenderer;
+import dev.corgitaco.worldviewer.client.tile.RenderTileManager;
 import dev.corgitaco.worldviewer.client.tile.RenderTile;
 import dev.corgitaco.worldviewer.client.tile.TileCoordinateShiftingManager;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.BiomeLayer;
@@ -63,7 +64,7 @@ public class WorldScreenv2 extends Screen {
 
     private int coolDown;
 
-//    private final Object2ObjectOpenHashMap<Holder<Structure>, StructureRender> structureRendering = new Object2ObjectOpenHashMap<>();
+    public StructureIconRenderer structureIconRenderer;
 
     private static final Map<UUID, ResourceLocation> SKINS = new HashMap<>();
 
@@ -94,6 +95,7 @@ public class WorldScreenv2 extends Screen {
         setWorldArea();
 
         this.renderTileManager = new RenderTileManager(this, level, origin);
+        this.structureIconRenderer = new StructureIconRenderer(this.level);
         super.init();
     }
 
@@ -131,9 +133,9 @@ public class WorldScreenv2 extends Screen {
 
         guiGraphics.drawString(Minecraft.getInstance().font, minecraft.fpsString, 0, 0, FastColor.ARGB32.color(255, 255, 255, 255));
 
-//        if (!overWidget(mouseX, mouseY)) {
-//            renderToolTip(guiGraphics, mouseX, mouseY);
-//        }
+        if (!overWidget(mouseX, mouseY)) {
+            renderToolTip(guiGraphics, mouseX, mouseY);
+        }
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
     }
 
@@ -178,15 +180,15 @@ public class WorldScreenv2 extends Screen {
 
         components.add(Component.literal("x=%s, z=%s".formatted(mouseWorldX, mouseWorldZ)).withStyle(ChatFormatting.BOLD));
 
-        ResourceKey<Biome> biomeResourceKey = dataTileManager.getBiomeRaw(mouseWorldX, mouseWorldZ).unwrapKey().orElseThrow();
-        int styleColor = FastColor.ARGB32.multiply(FastColor.ARGB32.color(255, 255, 255, 255), BiomeLayer.FAST_COLORS.getInt(biomeResourceKey));
-        components.add(Component.literal("Biome: " + biomeResourceKey.location().toString()).setStyle(Style.EMPTY.withColor(styleColor)));
-
-        boolean slimeChunkRaw = dataTileManager.isSlimeChunkRaw(SectionPos.blockToSectionCoord(mouseWorldX), SectionPos.blockToSectionCoord(mouseWorldZ));
-        components.add(Component.literal("Slime Chunk? %s".formatted(slimeChunkRaw ? "Yes" : "No")).setStyle(Style.EMPTY.withColor(slimeChunkRaw ? FastColor.ARGB32.color(124, 120, 190, 93) : FastColor.ARGB32.color(255, 255, 255, 255))));
-
-        int oceanFloorHeight = dataTileManager.getHeightRaw(Heightmap.Types.OCEAN_FLOOR, mouseWorldX, mouseWorldZ);
-        components.add(Component.literal("Surface height = %s".formatted(oceanFloorHeight)));
+//        ResourceKey<Biome> biomeResourceKey = dataTileManager.getBiomeRaw(mouseWorldX, mouseWorldZ).unwrapKey().orElseThrow();
+//        int styleColor = FastColor.ARGB32.multiply(FastColor.ARGB32.color(255, 255, 255, 255), BiomeLayer.FAST_COLORS.getInt(biomeResourceKey));
+//        components.add(Component.literal("Biome: " + biomeResourceKey.location().toString()).setStyle(Style.EMPTY.withColor(styleColor)));
+//
+//        boolean slimeChunkRaw = dataTileManager.isSlimeChunkRaw(SectionPos.blockToSectionCoord(mouseWorldX), SectionPos.blockToSectionCoord(mouseWorldZ));
+//        components.add(Component.literal("Slime Chunk? %s".formatted(slimeChunkRaw ? "Yes" : "No")).setStyle(Style.EMPTY.withColor(slimeChunkRaw ? FastColor.ARGB32.color(124, 120, 190, 93) : FastColor.ARGB32.color(255, 255, 255, 255))));
+//
+//        int oceanFloorHeight = dataTileManager.getHeightRaw(Heightmap.Types.OCEAN_FLOOR, mouseWorldX, mouseWorldZ);
+//        components.add(Component.literal("Surface height = %s".formatted(oceanFloorHeight)));
 
         return components;
     }

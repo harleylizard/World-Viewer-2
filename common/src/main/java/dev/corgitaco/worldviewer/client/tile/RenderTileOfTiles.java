@@ -1,5 +1,6 @@
 package dev.corgitaco.worldviewer.client.tile;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import dev.corgitaco.worldviewer.client.ClientUtil;
@@ -94,28 +95,20 @@ public class RenderTileOfTiles implements ScreenTile {
     @Override
     public void renderTile(GuiGraphics guiGraphics, float scale) {
         if (shouldRender()) {
+            RenderSystem.blendFunc(GlStateManager.SourceFactor.DST_COLOR,  GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
             this.layers.forEach((s, nativeImage) -> {
                 DynamicTexture dynamicTexture = textureMap.computeIfAbsent(s, key1 -> new DynamicTexture(nativeImage));
 
-                RenderSystem.setShaderColor(1, 1, 1, 0.3F);
+                RenderSystem.setShaderColor(1, 1, 1, 1);
                 RenderSystem.setShaderTexture(0, dynamicTexture.getId());
                 ClientUtil.blit(guiGraphics.pose(), 0, 0, 0F, 0F, this.size, this.size, this.size, this.size);
                 RenderSystem.setShaderColor(1, 1, 1, 1);
-//                drawOutlineWithWidth(guiGraphics, 0, 0, this.size, this.size, (int) Math.ceil(1 / scale), FastColor.ARGB32.color(255, 255, 0, 0));
+//                ClientUtil.drawOutlineWithWidth(guiGraphics, 0, 0, this.size, this.size, (int) Math.ceil(1.5 / scale), FastColor.ARGB32.color(255, 255, 0, 0));
             });
+            RenderSystem.disableBlend();
         }
     }
 
-    private static void drawOutlineWithWidth(GuiGraphics guiGraphics, int x1, int y1, int x2, int y2, int lineWidth, int color) {
-        // Bottom Line
-        guiGraphics.fill(x1, y1 + -lineWidth, x2, y1 + lineWidth, color);
-        // Top Line
-        guiGraphics.fill(x1, y2 + -lineWidth, x2, y2 + lineWidth, color);
-        // Left Line
-        guiGraphics.fill(x1 + -lineWidth, y1, x1 + lineWidth, y2, color);
-        // Right Line
-        guiGraphics.fill(x2 + -lineWidth, y1, x2 + lineWidth, y2, color);
-    }
 
     @Override
     public Map<String, NativeImage> layers() {
