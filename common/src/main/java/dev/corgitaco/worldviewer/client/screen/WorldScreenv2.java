@@ -131,9 +131,9 @@ public class WorldScreenv2 extends Screen {
 
         guiGraphics.drawString(Minecraft.getInstance().font, minecraft.fpsString, 0, 0, FastColor.ARGB32.color(255, 255, 255, 255));
 
-        if (!overWidget(mouseX, mouseY)) {
-            renderToolTip(guiGraphics, mouseX, mouseY);
-        }
+//        if (!overWidget(mouseX, mouseY)) {
+//            renderToolTip(guiGraphics, mouseX, mouseY);
+//        }
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
     }
 
