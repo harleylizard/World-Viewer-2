@@ -6,9 +6,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.StructureIconRenderer;
 import dev.corgitaco.worldviewer.client.tile.RenderTileManager;
-import dev.corgitaco.worldviewer.client.tile.RenderTile;
 import dev.corgitaco.worldviewer.client.tile.TileCoordinateShiftingManager;
-import dev.corgitaco.worldviewer.client.tile.tilelayer.BiomeLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -20,11 +18,9 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -143,17 +139,19 @@ public class WorldScreenv2 extends Screen {
         BlockPos mouseWorldPos = getMouseWorldPos(mouseX, mouseY);
 
         long mouseTileKey = shiftingManager.tileKey(mouseWorldPos);
-        RenderTile renderTile = this.renderTileManager.loaded.get(mouseTileKey);
 
-        List<Component> toolTip = buildToolTip(mouseWorldPos, this.renderTileManager.getDataTileManager());
-        if (renderTile != null) {
-            int mouseTileLocalX = (mouseWorldPos.getX() - renderTile.getMinTileWorldX());
-            int mouseTileLocalY = (mouseWorldPos.getZ() - renderTile.getMinTileWorldZ());
-            toolTip.addAll(renderTile.toolTip(mouseX, mouseY, mouseWorldPos.getX(), mouseWorldPos.getZ(), mouseTileLocalX, mouseTileLocalY));
-            toolTip.add(Component.literal("Sample Resolution: %s blocks".formatted(renderTile.getSampleRes())));
-            toolTip.add(Component.literal("Tile size: %s blocks ".formatted(renderTile.getSize())));
-        }
-        guiGraphics.renderComponentTooltip(Minecraft.getInstance().font, toolTip, mouseX, mouseY);
+        // TODO: Tooltip
+//        SingleScreenTileLayer singleScreenTileLayer = this.renderTileManager.loaded.get(mouseTileKey);
+//
+//        List<Component> toolTip = buildToolTip(mouseWorldPos, this.renderTileManager.getDataTileManager());
+//        if (singleScreenTileLayer != null) {
+//            int mouseTileLocalX = (mouseWorldPos.getX() - singleScreenTileLayer.getMinTileWorldX());
+//            int mouseTileLocalY = (mouseWorldPos.getZ() - singleScreenTileLayer.getMinTileWorldZ());
+//            toolTip.addAll(singleScreenTileLayer.toolTip(mouseX, mouseY, mouseWorldPos.getX(), mouseWorldPos.getZ(), mouseTileLocalX, mouseTileLocalY));
+//            toolTip.add(Component.literal("Sample Resolution: %s blocks".formatted(singleScreenTileLayer.getSampleRes())));
+//            toolTip.add(Component.literal("Tile size: %s blocks ".formatted(singleScreenTileLayer.getSize())));
+//        }
+//        guiGraphics.renderComponentTooltip(Minecraft.getInstance().font, toolTip, mouseX, mouseY);
     }
 
     @NotNull
@@ -350,7 +348,7 @@ public class WorldScreenv2 extends Screen {
                         this.scale = (float) (this.scale + (delta * (this.scale * 0.5)));
 
                     }
-                    this.coolDown = 30;
+                    this.coolDown = 100;
                     this.renderTileManager.blockGeneration = true;
                     this.renderTileManager.onScroll();
                     cull();

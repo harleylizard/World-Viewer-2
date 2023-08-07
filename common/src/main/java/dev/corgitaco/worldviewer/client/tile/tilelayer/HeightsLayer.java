@@ -49,6 +49,11 @@ public class HeightsLayer extends TileLayer {
     }
 
     @Override
+    public float opacity() {
+        return 1;
+    }
+
+    @Override
     public NativeImage image() {
         return this.image;
     }

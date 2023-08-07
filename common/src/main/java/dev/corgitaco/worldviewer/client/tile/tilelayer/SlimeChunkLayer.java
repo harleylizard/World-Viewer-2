@@ -1,23 +1,15 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import dev.corgitaco.worldviewer.client.WVDynamicTexture;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.FastColor;
 import net.minecraft.world.level.ChunkPos;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Map;
-
 public class SlimeChunkLayer extends TileLayer {
-
-    @Nullable
-    private DynamicTexture lazy;
 
     @Nullable
     private int[][] colorData;
@@ -30,6 +22,8 @@ public class SlimeChunkLayer extends TileLayer {
         this.colorData = sampleResolution <= 16 && size <= 128 ? getColorData(tileManager, tileWorldX, tileWorldZ, size, sampledChunks) : null;
         if (colorData != null) {
             this.image = makeNativeImageFromColorData(colorData);
+        } else {
+            this.image = new NativeImage(size, size, true);
         }
 
     }

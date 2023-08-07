@@ -1,26 +1,29 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
+import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.MutableComponent;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class TileLayer {
 
-    public static final LinkedHashMap<String, Factory> FACTORY_REGISTRY = Util.make(() -> {
-        LinkedHashMap<String, Factory> map = new LinkedHashMap<>();
-        map.put("biomes", BiomeLayer::new);
-//        map.put("heights", HeightsLayer::new);
-        map.put("slime_chunks", SlimeChunkLayer::new);
+
+
+    public static final List<Pair<String, Factory>> FACTORY_REGISTRY = Util.make(() -> {
+        List<Pair<String, Factory>> tileLayers = new ArrayList<>();
+//        tileLayers.add(Pair.of("heights", HeightsLayer::new));
+        tileLayers.add(Pair.of("biomes", BiomeLayer::new));
+//        tileLayers.add(Pair.of("slime_chunks", SlimeChunkLayer::new));
 //        map.put("structures", StructuresLayer::new);
-        return map;
+        return tileLayers;
     });
 
     protected final DataTileManager dataTileManager;
@@ -57,6 +60,10 @@ public abstract class TileLayer {
             }
         }
         return nativeImage;
+    }
+
+    public float opacity() {
+        return 1F;
     }
 
     @FunctionalInterface

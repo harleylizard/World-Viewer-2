@@ -3,9 +3,7 @@ package dev.corgitaco.worldviewer.client.tile;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.gui.GuiGraphics;
 
-import java.util.Map;
-
-public interface ScreenTile {
+public interface ScreenTileLayer {
 
 
     int getMinTileWorldX();
@@ -18,7 +16,9 @@ public interface ScreenTile {
 
     void renderTile(GuiGraphics guiGraphics, float scale);
 
-    Map<String, NativeImage> layers();
+    NativeImage image();
+
+    float opacity();
 
     int size();
 
