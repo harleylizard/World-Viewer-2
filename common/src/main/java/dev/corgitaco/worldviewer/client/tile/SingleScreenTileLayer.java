@@ -1,8 +1,9 @@
 package dev.corgitaco.worldviewer.client.tile;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.corgitaco.worldviewer.client.ClientUtil;
+import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
@@ -100,10 +101,9 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
                 this.dynamicTexture = new DynamicTexture(this.tileLayer.image());
             }
 
-            RenderSystem.setShaderColor(opacity(), opacity(), opacity(), opacity());
-            RenderSystem.setShaderTexture(0, dynamicTexture.getId());
-            ClientUtil.blit(guiGraphics.pose(), 0, 0, 0F, 0F, this.size, this.size, this.size, this.size);
-            RenderSystem.setShaderColor(1, 1, 1, 1);
+            VertexConsumer vertexConsumer = guiGraphics.bufferSource().getBuffer(WVRenderType.GUI_TEXTURE.apply(dynamicTexture.getId()));
+
+            ClientUtil.blit(vertexConsumer, guiGraphics.pose(), 0, 0, 0F, 0F, this.size, this.size, this.size, this.size);
 //          ClientUtil.drawOutlineWithWidth(guiGraphics, 0, 0, this.size, this.size, (int) Math.ceil(1.5 / scale), FastColor.ARGB32.color(255, 0, 255, 0));
         }
     }

@@ -1,7 +1,6 @@
 package dev.corgitaco.worldviewer.client.screen;
 
 import com.mojang.authlib.GameProfile;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.StructureIconRenderer;
@@ -123,7 +122,7 @@ public class WorldScreenv2 extends Screen {
 
         drawGrid(guiGraphics);
 
-        drawPlayers(stack);
+        drawPlayers(guiGraphics);
 
         stack.popPose();
 
@@ -243,7 +242,7 @@ public class WorldScreenv2 extends Screen {
         }
     }
 
-    private void drawPlayers(PoseStack stack) {
+    private void drawPlayers(GuiGraphics guiGraphics) {
         for (ServerPlayer player : this.level.players()) {
 
             if (!this.worldViewArea.intersects(player.getBlockX(), player.getBlockZ(), player.getBlockX(), player.getBlockZ())) {
@@ -257,7 +256,6 @@ public class WorldScreenv2 extends Screen {
 
 
             boolean entityUpsideDown = LivingEntityRenderer.isEntityUpsideDown(player);
-            RenderSystem.setShaderTexture(0, skinLocation);
             int yOffset = 8 + (entityUpsideDown ? 8 : 0);
             int yHeight = 8 * (entityUpsideDown ? -1 : 1);
 
@@ -269,7 +267,8 @@ public class WorldScreenv2 extends Screen {
 
             int renderX = (int) ((getScreenCenterX() + localXFromWorldX) - (size / 2F));
             int renderZ = (int) ((getScreenCenterZ() + localZFromWorldZ) - (size / 2F));
-            ClientUtil.blit(stack, renderX, renderZ, size, size, 8.0F, (float) yOffset, 8, yHeight, 64, 64);
+
+            guiGraphics.blit(skinLocation, renderX, renderZ, size, size, 8.0F, (float) yOffset, 8, yHeight, 64, 64);
         }
     }
 

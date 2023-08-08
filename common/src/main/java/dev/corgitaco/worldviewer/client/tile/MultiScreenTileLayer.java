@@ -1,10 +1,12 @@
 package dev.corgitaco.worldviewer.client.tile;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.corgitaco.worldviewer.client.ClientUtil;
+import dev.corgitaco.worldviewer.client.WVRenderType;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.util.FastColor;
 import org.jetbrains.annotations.Nullable;
 
 public class MultiScreenTileLayer implements ScreenTileLayer {
@@ -27,7 +29,8 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
 
     public MultiScreenTileLayer(ScreenTileLayer[][] delegates) {
         ScreenTileLayer firstDelegate = delegates[0][0];
-        this.opacity = firstDelegate.opacity();;
+        this.opacity = firstDelegate.opacity();
+        ;
         this.minWorldX = firstDelegate.getMinTileWorldX();
         this.minWorldZ = firstDelegate.getMinTileWorldZ();
         this.maxWorldX = delegates[delegates.length - 1][delegates.length - 1].getMaxTileWorldX();
@@ -38,12 +41,10 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
         int width = firstDelegate.image().getWidth() * delegates[0].length;
         int height = firstDelegate.image().getHeight() * delegates[0].length;
 
-        NativeImage newImage = new NativeImage(width, height, true);
+        NativeImage newImage = new NativeImage(width, height, false);
 
         for (int x = 0; x < delegates.length; x++) {
             for (int z = 0; z < delegates[x].length; z++) {
-
-
                 ScreenTileLayer delegate = delegates[x][z];
                 delegate.setShouldRender(false);
 
@@ -92,11 +93,10 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
                 this.dynamicTexture = new DynamicTexture(this.nativeImage);
             }
 
-            RenderSystem.setShaderColor(opacity(), opacity(), opacity(), opacity());
-            RenderSystem.setShaderTexture(0, dynamicTexture.getId());
-            ClientUtil.blit(guiGraphics.pose(), 0, 0, 0F, 0F, this.size, this.size, this.size, this.size);
-            RenderSystem.setShaderColor(1, 1, 1, 1);
-//          ClientUtil.drawOutlineWithWidth(guiGraphics, 0, 0, this.size, this.size, (int) Math.ceil(1.5 / scale), FastColor.ARGB32.color(255, 0, 255, 0));
+            VertexConsumer vertexConsumer = guiGraphics.bufferSource().getBuffer(WVRenderType.GUI_TEXTURE.apply(dynamicTexture.getId()));
+
+            ClientUtil.blit(vertexConsumer, guiGraphics.pose(), 0, 0, 0F, 0F, this.size, this.size, this.size, this.size);
+            ClientUtil.drawOutlineWithWidth(guiGraphics, 0, 0, this.size, this.size, (int) Math.ceil(1.5 / scale), FastColor.ARGB32.color(255, 0, 255, 0));
         }
     }
 
