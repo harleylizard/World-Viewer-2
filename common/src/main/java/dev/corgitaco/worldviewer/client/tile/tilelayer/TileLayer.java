@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.network.chat.MutableComponent;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,11 +17,10 @@ import java.util.List;
 public abstract class TileLayer {
 
 
-
     public static final List<Pair<String, Factory>> FACTORY_REGISTRY = Util.make(() -> {
         List<Pair<String, Factory>> tileLayers = new ArrayList<>();
-//        tileLayers.add(Pair.of("heights", HeightsLayer::new));
         tileLayers.add(Pair.of("biomes", BiomeLayer::new));
+        tileLayers.add(Pair.of("heights", HeightsLayer::new));
 //        tileLayers.add(Pair.of("slime_chunks", SlimeChunkLayer::new));
 //        map.put("structures", StructuresLayer::new);
         return tileLayers;
@@ -46,6 +46,7 @@ public abstract class TileLayer {
 
     @Nullable
     public abstract NativeImage image();
+
     public boolean usesLod() {
         return true;
     }
@@ -63,7 +64,11 @@ public abstract class TileLayer {
     }
 
     public float opacity() {
-        return 1F;
+        return 0.7F;
+    }
+
+    public RenderStateShard.TransparencyStateShard transparencyStateShard() {
+        return RenderStateShard.NO_TRANSPARENCY;
     }
 
     @FunctionalInterface

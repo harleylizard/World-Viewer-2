@@ -1,9 +1,11 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.FastColor;
 import net.minecraft.util.Mth;
@@ -13,7 +15,6 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 public class HeightsLayer extends TileLayer {
 
-    private int[][] colorData;
     private NativeImage image;
 
     public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
@@ -21,7 +22,7 @@ public class HeightsLayer extends TileLayer {
 
 
         int sampledSize = size / sampleResolution;
-        colorData = new int[sampledSize][sampledSize];
+        int[][] colorData = new int[sampledSize][sampledSize];
 
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
         for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
@@ -44,13 +45,18 @@ public class HeightsLayer extends TileLayer {
 
     public static int getGrayScale(int y, LevelHeightAccessor heightAccessor) {
         float pct = Mth.clamp(Mth.inverseLerp(y, 0, 255), 0, 1F);
-        int color = Math.round(Mth.clampedLerp(127, 255, pct));
+        int color = Math.round(Mth.clampedLerp(0, 255, pct));
         return FastColor.ARGB32.color(255, color, color, color);
     }
 
     @Override
     public float opacity() {
-        return 1;
+        return 0.5F;
+    }
+
+    @Override
+    public RenderStateShard.TransparencyStateShard transparencyStateShard() {
+        return WVRenderType.DST_COLOR_SRC_ALPHA_TRANSPARENCY;
     }
 
     @Override

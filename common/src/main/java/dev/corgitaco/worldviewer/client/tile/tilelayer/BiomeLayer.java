@@ -2,14 +2,11 @@ package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.corgitaco.worldviewer.client.ClientUtil;
-import dev.corgitaco.worldviewer.client.WVDynamicTexture;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.Util;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
@@ -18,9 +15,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Map;
 
 public class BiomeLayer extends TileLayer {
 
@@ -157,7 +151,6 @@ public class BiomeLayer extends TileLayer {
         int r = ClientUtil.getNativeR(abgr);
         return FastColor.ARGB32.color(a, r, g, b);
     }
-
     @Override
     public NativeImage image() {
         return this.image;

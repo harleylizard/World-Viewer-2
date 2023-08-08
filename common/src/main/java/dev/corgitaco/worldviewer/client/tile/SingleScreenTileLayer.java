@@ -10,6 +10,7 @@ import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
@@ -101,9 +102,9 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
                 this.dynamicTexture = new DynamicTexture(this.tileLayer.image());
             }
 
-            VertexConsumer vertexConsumer = guiGraphics.bufferSource().getBuffer(WVRenderType.GUI_TEXTURE.apply(dynamicTexture.getId()));
+            VertexConsumer vertexConsumer = guiGraphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(dynamicTexture.getId(), transparencyStateShard()));
 
-            ClientUtil.blit(vertexConsumer, guiGraphics.pose(), 0, 0, 0F, 0F, this.size, this.size, this.size, this.size);
+            ClientUtil.blit(vertexConsumer, guiGraphics.pose(), opacity(), 0, 0, 0F, 0F, this.size, this.size, this.size, this.size);
 //          ClientUtil.drawOutlineWithWidth(guiGraphics, 0, 0, this.size, this.size, (int) Math.ceil(1.5 / scale), FastColor.ARGB32.color(255, 0, 255, 0));
         }
     }
@@ -116,6 +117,11 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
     @Override
     public float opacity() {
         return this.tileLayer.opacity();
+    }
+
+    @Override
+    public RenderStateShard.TransparencyStateShard transparencyStateShard() {
+        return this.tileLayer.transparencyStateShard();
     }
 
     @Override

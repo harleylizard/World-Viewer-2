@@ -40,27 +40,27 @@ public class ClientUtil {
         guiGraphics.fill(x2 + -lineWidth, y1, x2 + lineWidth, y2, color);
     }
 
-    public static void blit(VertexConsumer vertexConsumer, PoseStack matrixStack, int x, int y, int blitOffset, float uOffset, float vOffset, int uWidth, int vHeight, int textureHeight, int textureWidth) {
-        innerBlit(vertexConsumer, matrixStack, x, x + uWidth, y, y + vHeight, blitOffset, uWidth, vHeight, uOffset, vOffset, textureHeight, textureWidth);
+    public static void blit(VertexConsumer vertexConsumer, PoseStack matrixStack, float opacity, int x, int y, int blitOffset, float uOffset, float vOffset, int uWidth, int vHeight, int textureHeight, int textureWidth) {
+        innerBlit(vertexConsumer, matrixStack, opacity, x, x + uWidth, y, y + vHeight, blitOffset, uWidth, vHeight, uOffset, vOffset, textureHeight, textureWidth);
     }
 
-    public static void blit(VertexConsumer vertexConsumer, PoseStack matrixStack, int x, int y, int width, int height, float uOffset, float vOffset, int uWidth, int vHeight, int textureWidth, int textureHeight) {
-        innerBlit(vertexConsumer, matrixStack, x, x + width, y, y + height, 0, uWidth, vHeight, uOffset, vOffset, textureWidth, textureHeight);
+    public static void blit(VertexConsumer vertexConsumer, PoseStack matrixStack, float opacity, int x, int y, int width, int height, float uOffset, float vOffset, int uWidth, int vHeight, int textureWidth, int textureHeight) {
+        innerBlit(vertexConsumer, matrixStack, opacity, x, x + width, y, y + height, 0, uWidth, vHeight, uOffset, vOffset, textureWidth, textureHeight);
     }
 
-    public static void blit(VertexConsumer vertexConsumer, PoseStack matrixStack, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) {
-        blit(vertexConsumer, matrixStack, x, y, width, height, uOffset, vOffset, width, height, textureWidth, textureHeight);
+    public static void blit(VertexConsumer vertexConsumer, PoseStack matrixStack, float opacity, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) {
+        blit(vertexConsumer, matrixStack, opacity, x, y, width, height, uOffset, vOffset, width, height, textureWidth, textureHeight);
     }
 
-    private static void innerBlit(VertexConsumer vertexConsumer, PoseStack matrixStack, int x1, int x2, int y1, int y2, int blitOffset, int uWidth, int vHeight, float uOffset, float vOffset, int textureWidth, int textureHeight) {
-        innerBlit(vertexConsumer, matrixStack.last().pose(), x1, x2, y1, y2, blitOffset, (uOffset + 0.0F) / (float) textureWidth, (uOffset + (float) uWidth) / (float) textureWidth, (vOffset + 0.0F) / (float) textureHeight, (vOffset + (float) vHeight) / (float) textureHeight);
+    private static void innerBlit(VertexConsumer vertexConsumer, PoseStack matrixStack, float opacity, int x1, int x2, int y1, int y2, int blitOffset, int uWidth, int vHeight, float uOffset, float vOffset, int textureWidth, int textureHeight) {
+        innerBlit(vertexConsumer, matrixStack.last().pose(), opacity, x1, x2, y1, y2, blitOffset, (uOffset + 0.0F) / (float) textureWidth, (uOffset + (float) uWidth) / (float) textureWidth, (vOffset + 0.0F) / (float) textureHeight, (vOffset + (float) vHeight) / (float) textureHeight);
     }
 
-    private static void innerBlit(VertexConsumer vertexConsumer, Matrix4f matrix, int x1, int x2, int y1, int y2, int blitOffset, float minU, float maxU, float minV, float maxV) {
-        vertexConsumer.vertex(matrix, (float) x1, (float) y2, (float) blitOffset).color(1F, 1F, 1F, 1F).uv(minU, maxV).endVertex();
-        vertexConsumer.vertex(matrix, (float) x2, (float) y2, (float) blitOffset).color(1F, 1F, 1F, 1F).uv(maxU, maxV).endVertex();
-        vertexConsumer.vertex(matrix, (float) x2, (float) y1, (float) blitOffset).color(1F, 1F, 1F, 1F).uv(maxU, minV).endVertex();
-        vertexConsumer.vertex(matrix, (float) x1, (float) y1, (float) blitOffset).color(1F, 1F, 1F, 1F).uv(minU, minV).endVertex();
+    private static void innerBlit(VertexConsumer vertexConsumer, Matrix4f matrix, float opacity, int x1, int x2, int y1, int y2, int blitOffset, float minU, float maxU, float minV, float maxV) {
+            vertexConsumer.vertex(matrix, (float) x1, (float) y2, (float) blitOffset).color(1F, 1F, 1F, opacity).uv(minU, maxV).endVertex();
+            vertexConsumer.vertex(matrix, (float) x2, (float) y2, (float) blitOffset).color(1F, 1F, 1F, opacity).uv(maxU, maxV).endVertex();
+            vertexConsumer.vertex(matrix, (float) x2, (float) y1, (float) blitOffset).color(1F, 1F, 1F, opacity).uv(maxU, minV).endVertex();
+            vertexConsumer.vertex(matrix, (float) x1, (float) y1, (float) blitOffset).color(1F, 1F, 1F, opacity).uv(minU, minV).endVertex();
     }
 
 

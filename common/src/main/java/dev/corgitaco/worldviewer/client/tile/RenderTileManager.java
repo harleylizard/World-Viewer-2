@@ -19,7 +19,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -31,14 +30,30 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class RenderTileManager {
     private ExecutorService executorService = createExecutor();
 
-    private final Long2ObjectLinkedOpenHashMap<CompletableFuture<SingleScreenTileLayer>>[] trackedTileLayerFutures = Util.make(new Long2ObjectLinkedOpenHashMap[TileLayer.FACTORY_REGISTRY.size()], maps -> Arrays.fill(maps, new Long2ObjectLinkedOpenHashMap<CompletableFuture<SingleScreenTileLayer>>()));
+    private final Long2ObjectLinkedOpenHashMap<CompletableFuture<SingleScreenTileLayer>>[] trackedTileLayerFutures = Util.make(new Long2ObjectLinkedOpenHashMap[TileLayer.FACTORY_REGISTRY.size()], maps -> {
+        for (int i = 0; i < maps.length; i++) {
+            maps[i] = new Long2ObjectLinkedOpenHashMap();
+        }
+    });
     private WorldScreenv2 worldScreenv2;
     private final BlockPos origin;
 
-    private final AtomicBoolean[] changesDetected = Util.make(new AtomicBoolean[TileLayer.FACTORY_REGISTRY.size()], atomicBooleans -> Arrays.fill(atomicBooleans, new AtomicBoolean(true)));
+    private final AtomicBoolean[] changesDetected = Util.make(new AtomicBoolean[TileLayer.FACTORY_REGISTRY.size()], maps -> {
+        for (int i = 0; i < maps.length; i++) {
+            maps[i] = new AtomicBoolean();
+        }
+    });
 
-    public final Long2ObjectOpenHashMap<SingleScreenTileLayer>[] loaded = Util.make(new Long2ObjectOpenHashMap[TileLayer.FACTORY_REGISTRY.size()], maps -> Arrays.fill(maps, new Long2ObjectOpenHashMap<CompletableFuture<SingleScreenTileLayer>>()));
-    public final Int2ObjectOpenHashMap<Long2ObjectOpenHashMap<ScreenTileLayer>>[] toRender = Util.make(new Int2ObjectOpenHashMap[TileLayer.FACTORY_REGISTRY.size()], maps -> Arrays.fill(maps, new Int2ObjectOpenHashMap<CompletableFuture<SingleScreenTileLayer>>()));
+    public final Long2ObjectOpenHashMap<SingleScreenTileLayer>[] loaded = Util.make(new Long2ObjectOpenHashMap[TileLayer.FACTORY_REGISTRY.size()], maps -> {
+        for (int i = 0; i < maps.length; i++) {
+            maps[i] = new Long2ObjectOpenHashMap();
+        }
+    });
+    public final Int2ObjectOpenHashMap<Long2ObjectOpenHashMap<ScreenTileLayer>>[] toRender = Util.make(new Int2ObjectOpenHashMap[TileLayer.FACTORY_REGISTRY.size()], maps -> {
+        for (int i = 0; i < maps.length; i++) {
+            maps[i] = new Int2ObjectOpenHashMap();
+        }
+    });
 
     public final ConcurrentSet<SingleScreenTileLayer> toClose = new ConcurrentSet<>();
 

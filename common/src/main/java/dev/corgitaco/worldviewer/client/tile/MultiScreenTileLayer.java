@@ -5,8 +5,8 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.WVRenderType;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.util.FastColor;
 import org.jetbrains.annotations.Nullable;
 
 public class MultiScreenTileLayer implements ScreenTileLayer {
@@ -26,11 +26,12 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
 
     private final int size;
     private final float opacity;
+    private final RenderStateShard.TransparencyStateShard transparencyStateShard;
 
     public MultiScreenTileLayer(ScreenTileLayer[][] delegates) {
         ScreenTileLayer firstDelegate = delegates[0][0];
         this.opacity = firstDelegate.opacity();
-        ;
+        this.transparencyStateShard = firstDelegate.transparencyStateShard();
         this.minWorldX = firstDelegate.getMinTileWorldX();
         this.minWorldZ = firstDelegate.getMinTileWorldZ();
         this.maxWorldX = delegates[delegates.length - 1][delegates.length - 1].getMaxTileWorldX();
@@ -93,11 +94,16 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
                 this.dynamicTexture = new DynamicTexture(this.nativeImage);
             }
 
-            VertexConsumer vertexConsumer = guiGraphics.bufferSource().getBuffer(WVRenderType.GUI_TEXTURE.apply(dynamicTexture.getId()));
+            VertexConsumer vertexConsumer = guiGraphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(dynamicTexture.getId(), transparencyStateShard()));
 
-            ClientUtil.blit(vertexConsumer, guiGraphics.pose(), 0, 0, 0F, 0F, this.size, this.size, this.size, this.size);
-            ClientUtil.drawOutlineWithWidth(guiGraphics, 0, 0, this.size, this.size, (int) Math.ceil(1.5 / scale), FastColor.ARGB32.color(255, 0, 255, 0));
+            ClientUtil.blit(vertexConsumer, guiGraphics.pose(), opacity(), 0, 0, 0F, 0F, this.size, this.size, this.size, this.size);
+//          ClientUtil.drawOutlineWithWidth(guiGraphics, 0, 0, this.size, this.size, (int) Math.ceil(1.5 / scale), FastColor.ARGB32.color(255, 0, 255, 0));
         }
+    }
+
+    @Override
+    public RenderStateShard.TransparencyStateShard transparencyStateShard() {
+        return this.transparencyStateShard;
     }
 
     @Override
