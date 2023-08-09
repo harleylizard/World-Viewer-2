@@ -55,9 +55,6 @@ public class RenderTileManager {
         }
     });
 
-    public final ConcurrentSet<SingleScreenTileLayer> toClose = new ConcurrentSet<>();
-
-
     private final DataTileManager tileManager;
 
 
@@ -72,19 +69,11 @@ public class RenderTileManager {
     }
 
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks, WorldScreenv2 worldScreenv2) {
-
-
-//        RenderSystem.enableBlend();
-//        RenderSystem.blendFunc(GlStateManager.SourceFactor.DST_COLOR,  GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
         for (int toRenderIDX = 0; toRenderIDX < this.toRender.length; toRenderIDX++) {
             this.toRender[toRenderIDX].forEach((scale, tiles) -> {
 
                 renderTiles(guiGraphics, this.worldScreenv2, tiles.values());
-            });
-//            afterTilesRender(guiGraphics, worldScreenv2, this.loaded[toRenderIDX].values());
-        }
-//        RenderSystem.disableBlend();
-
+            });}
     }
 
     private static void renderTiles(GuiGraphics graphics, WorldScreenv2 worldScreenv2, Collection<? extends ScreenTileLayer> renderTiles) {
@@ -105,28 +94,6 @@ public class RenderTileManager {
             }
         });
     }
-
-    private static void afterTilesRender(GuiGraphics graphics, WorldScreenv2 worldScreenv2, Collection<? extends SingleScreenTileLayer> renderTiles) {
-        PoseStack poseStack = graphics.pose();
-        renderTiles.forEach(tileToRender -> {
-            if (tileToRender != null) {
-                int localX = (int) worldScreenv2.getLocalXFromWorldX(tileToRender.getMinTileWorldX());
-                int localZ = (int) worldScreenv2.getLocalZFromWorldZ(tileToRender.getMinTileWorldZ());
-
-                int screenTileMinX = (worldScreenv2.getScreenCenterX() + localX);
-                int screenTileMinZ = (worldScreenv2.getScreenCenterZ() + localZ);
-
-                poseStack.pushPose();
-                poseStack.translate(screenTileMinX, screenTileMinZ, 0);
-                poseStack.mulPose(Axis.ZN.rotationDegrees(180));
-
-                tileToRender.afterTilesRender(graphics, 1F);
-
-                poseStack.popPose();
-            }
-        });
-    }
-
     public void tick() {
         long startMs = System.currentTimeMillis();
         long originTile = worldScreenv2.shiftingManager.tileKey(this.origin);
@@ -135,136 +102,134 @@ public class RenderTileManager {
             blockGeneration = true;
         }
 
+        List<Runnable> toRun = new ArrayList<>();
 
-        for (int trackedTileLayerFutureIdx = 0; trackedTileLayerFutureIdx < trackedTileLayerFutures.length; trackedTileLayerFutureIdx++) {
+        processLayers(toRun);
 
-            if (!changesDetected[trackedTileLayerFutureIdx].get()) {
-                continue;
-            }
-            changesDetected[trackedTileLayerFutureIdx].set(false);
-
-            List<Runnable> toSubmit = new ArrayList<>();
-            LongSet toRemove = new LongOpenHashSet();
-
-            int finalTrackedTileLayerFuture = trackedTileLayerFutureIdx;
-            trackedTileLayerFutures[trackedTileLayerFutureIdx].long2ObjectEntrySet().fastForEach(entry -> {
-                long tilePos = entry.getLongKey();
-                CompletableFuture<SingleScreenTileLayer> future = entry.getValue();
-                if (future.isCompletedExceptionally()) {
-                    try {
-                        future.getNow(null);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        throw new RuntimeException(e);
-                    }
-                }
-
-                if (future.isDone()) {
-                    toRemove.add(tilePos);
-                }
-
-                int worldX = worldScreenv2.shiftingManager.getWorldXFromTileKey(tilePos);
-                int worldZ = worldScreenv2.shiftingManager.getWorldZFromTileKey(tilePos);
-                if (!worldScreenv2.worldViewArea.intersects(worldX, worldZ, worldX, worldZ) && !future.isCancelled()) {
-                    future.cancel(true);
-                    toRemove.add(tilePos);
-                } else {
-                    toSubmit.add(() -> {
-                        SingleScreenTileLayer singleScreenTileLayer = future.getNow(null);
-                        if (singleScreenTileLayer != null) {
-                            int newSampleRes = singleScreenTileLayer.getSampleRes() >> 1;
-                            if (newSampleRes >= worldScreenv2.sampleResolution) {
-                                submitTileFuture(worldScreenv2, singleScreenTileLayer.getSize(), tilePos, newSampleRes, singleScreenTileLayer, finalTrackedTileLayerFuture);
-                            }
-
-                            SingleScreenTileLayer previous = loaded[finalTrackedTileLayerFuture].put(tilePos, singleScreenTileLayer);
-                            this.toRender[finalTrackedTileLayerFuture].computeIfAbsent(1, key1 -> new Long2ObjectOpenHashMap<>()).put(tilePos, singleScreenTileLayer);
-                            if (previous != null && previous != singleScreenTileLayer) {
-                                this.toClose.add(previous);
-                            }
-                        }
-                    });
-                }
-            });
-            toRemove.forEach(this.trackedTileLayerFutures[trackedTileLayerFutureIdx]::remove);
-
-
-            toClose.removeIf(singleScreenTileLayer -> {
-                singleScreenTileLayer.close();
-                return true;
-            });
-
-
-            List<Runnable> toRun = new ArrayList<>();
-            int finalTrackedTileLayerFutureIdx = trackedTileLayerFutureIdx;
-            this.toRender[trackedTileLayerFutureIdx].int2ObjectEntrySet().fastForEach((entry) -> {
-                int currentScale = entry.getIntKey();
-                Long2ObjectOpenHashMap<ScreenTileLayer> tiles = entry.getValue();
-
-                int newScale = currentScale << 1;
-
-
-                tiles.long2ObjectEntrySet().fastForEach(screenTileEntry -> {
-                    long tilePos = screenTileEntry.getLongKey();
-                    ScreenTileLayer screenTileLayer = screenTileEntry.getValue();
-
-                    int tileX = worldScreenv2.shiftingManager.getTileX(tilePos);
-                    int tileZ = worldScreenv2.shiftingManager.getTileZ(tilePos);
-
-                    int getNextScaleMinTileX = (tileX / newScale) * newScale;
-                    int getNextScaleMaxTileX = (getNextScaleMinTileX + newScale);
-
-                    int getNextScaleMinTileZ = (tileZ / newScale) * newScale;
-                    int getNextScaleMaxTileZ = (getNextScaleMinTileZ + newScale);
-
-                    long minTileKey = LongPackingUtil.tileKey(getNextScaleMinTileX, getNextScaleMinTileZ);
-
-                    if (!toRender[finalTrackedTileLayerFutureIdx].computeIfAbsent(newScale, key1 -> new Long2ObjectOpenHashMap<>()).containsKey(minTileKey)) {
-                        int xRange = Math.abs(getNextScaleMaxTileX - getNextScaleMinTileX);
-                        int zRange = Math.abs(getNextScaleMaxTileZ - getNextScaleMinTileZ);
-
-                        int xTileIncrement = xRange / 2;
-                        int zTileIncrement = zRange / 2;
-
-                        ScreenTileLayer[][] tilesToRender = new ScreenTileLayer[2][2];
-
-                        long[] positions = new long[2 * 2];
-                        for (int tileOffsetX = 0; tileOffsetX < 2; tileOffsetX++) {
-                            for (int tileOffsetZ = 0; tileOffsetZ < 2; tileOffsetZ++) {
-                                int tileX1 = getNextScaleMinTileX + (tileOffsetX * xTileIncrement);
-                                int tileZ1 = getNextScaleMinTileZ + (tileOffsetZ * zTileIncrement);
-                                long tileKey = LongPackingUtil.tileKey(tileX1, tileZ1);
-                                positions[tileOffsetX * 2 + tileOffsetZ] = tileKey;
-
-                                ScreenTileLayer offset = this.toRender[finalTrackedTileLayerFuture].get(currentScale).get(tileKey);
-
-                                if (offset != null && offset.sampleResCheck(worldScreenv2.sampleResolution)) {
-                                    tilesToRender[tileOffsetX][tileOffsetZ] = offset;
-                                } else {
-                                    return;
-                                }
-                            }
-                        }
-                        toRun.add(() -> {
-                            toRender[finalTrackedTileLayerFuture].computeIfAbsent(newScale, key1 -> new Long2ObjectOpenHashMap<>()).put(minTileKey, new MultiScreenTileLayer(tilesToRender));
-                            for (long pos : positions) {
-                                toRender[finalTrackedTileLayerFuture].get(currentScale).remove(pos);
-                            }
-                        });
-                    }
-                });
-            });
-            toRun.forEach(Runnable::run);
-
-
-            toSubmit.forEach(Runnable::run);
-        }
-
+        toRun.forEach(Runnable::run);
         long endTime = System.currentTimeMillis();
         long timeTaken = endTime - startMs;
         if (timeTaken > 5) {
             System.out.println("Took over 5ms, took: %s".formatted(timeTaken));
         }
+    }
+
+    private void processLayers(List<Runnable> toRun) {
+        for (int trackedTileLayerFutureIdx = 0; trackedTileLayerFutureIdx < trackedTileLayerFutures.length; trackedTileLayerFutureIdx++) {
+            if (!changesDetected[trackedTileLayerFutureIdx].get()) {
+                continue;
+            }
+            changesDetected[trackedTileLayerFutureIdx].set(false);
+
+            processFutures(trackedTileLayerFutureIdx, toRun);
+
+            scaleUpTiles(trackedTileLayerFutureIdx, toRun);
+        }
+    }
+
+    private void processFutures(int trackedTileLayerFutureIdx, List<Runnable> toRun) {
+        LongSet toRemove = new LongOpenHashSet();
+
+        trackedTileLayerFutures[trackedTileLayerFutureIdx].long2ObjectEntrySet().fastForEach(entry -> {
+            long tilePos = entry.getLongKey();
+            CompletableFuture<SingleScreenTileLayer> future = entry.getValue();
+            if (future.isCompletedExceptionally()) {
+                try {
+                    future.getNow(null);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                }
+            }
+
+            if (future.isDone()) {
+                toRemove.add(tilePos);
+            }
+
+            int worldX = worldScreenv2.shiftingManager.getWorldXFromTileKey(tilePos);
+            int worldZ = worldScreenv2.shiftingManager.getWorldZFromTileKey(tilePos);
+            if (!worldScreenv2.worldViewArea.intersects(worldX, worldZ, worldX, worldZ) && !future.isCancelled()) {
+                future.cancel(true);
+                toRemove.add(tilePos);
+            } else {
+                toRun.add(() -> {
+                    SingleScreenTileLayer singleScreenTileLayer = future.getNow(null);
+                    if (singleScreenTileLayer != null) {
+                        int newSampleRes = singleScreenTileLayer.getSampleRes() >> 1;
+                        if (newSampleRes >= worldScreenv2.sampleResolution) {
+                            submitTileFuture(worldScreenv2, singleScreenTileLayer.getSize(), tilePos, newSampleRes, singleScreenTileLayer, trackedTileLayerFutureIdx);
+                        }
+
+                        SingleScreenTileLayer previous = loaded[trackedTileLayerFutureIdx].put(tilePos, singleScreenTileLayer);
+                        this.toRender[trackedTileLayerFutureIdx].computeIfAbsent(1, key1 -> new Long2ObjectOpenHashMap<>()).put(tilePos, singleScreenTileLayer);
+                        if (previous != null && previous != singleScreenTileLayer) {
+                            previous.close();
+                        }
+                    }
+                });
+            }
+        });
+        toRemove.forEach(this.trackedTileLayerFutures[trackedTileLayerFutureIdx]::remove);
+    }
+
+    private void scaleUpTiles(int trackedTileLayerFutureIdx, List<Runnable> toRun) {
+        this.toRender[trackedTileLayerFutureIdx].int2ObjectEntrySet().fastForEach((entry) -> {
+            int currentScale = entry.getIntKey();
+            Long2ObjectOpenHashMap<ScreenTileLayer> tiles = entry.getValue();
+
+            int newScale = currentScale << 1;
+
+
+            tiles.long2ObjectEntrySet().fastForEach(screenTileEntry -> {
+                long tilePos = screenTileEntry.getLongKey();
+                ScreenTileLayer screenTileLayer = screenTileEntry.getValue();
+
+                int tileX = worldScreenv2.shiftingManager.getTileX(tilePos);
+                int tileZ = worldScreenv2.shiftingManager.getTileZ(tilePos);
+
+                int getNextScaleMinTileX = (tileX / newScale) * newScale;
+                int getNextScaleMaxTileX = (getNextScaleMinTileX + newScale);
+
+                int getNextScaleMinTileZ = (tileZ / newScale) * newScale;
+                int getNextScaleMaxTileZ = (getNextScaleMinTileZ + newScale);
+
+                long minTileKey = LongPackingUtil.tileKey(getNextScaleMinTileX, getNextScaleMinTileZ);
+
+                if (!toRender[trackedTileLayerFutureIdx].computeIfAbsent(newScale, key1 -> new Long2ObjectOpenHashMap<>()).containsKey(minTileKey)) {
+                    int xRange = Math.abs(getNextScaleMaxTileX - getNextScaleMinTileX);
+                    int zRange = Math.abs(getNextScaleMaxTileZ - getNextScaleMinTileZ);
+
+                    int xTileIncrement = xRange / 2;
+                    int zTileIncrement = zRange / 2;
+
+                    ScreenTileLayer[][] tilesToRender = new ScreenTileLayer[2][2];
+
+                    long[] positions = new long[2 * 2];
+                    for (int tileOffsetX = 0; tileOffsetX < 2; tileOffsetX++) {
+                        for (int tileOffsetZ = 0; tileOffsetZ < 2; tileOffsetZ++) {
+                            int tileX1 = getNextScaleMinTileX + (tileOffsetX * xTileIncrement);
+                            int tileZ1 = getNextScaleMinTileZ + (tileOffsetZ * zTileIncrement);
+                            long tileKey = LongPackingUtil.tileKey(tileX1, tileZ1);
+                            positions[tileOffsetX * 2 + tileOffsetZ] = tileKey;
+
+                            ScreenTileLayer offset = this.toRender[trackedTileLayerFutureIdx].get(currentScale).get(tileKey);
+
+                            if (offset != null && offset.sampleResCheck(worldScreenv2.sampleResolution)) {
+                                tilesToRender[tileOffsetX][tileOffsetZ] = offset;
+                            } else {
+                                return;
+                            }
+                        }
+                    }
+                    toRun.add(() -> {
+                        toRender[trackedTileLayerFutureIdx].computeIfAbsent(newScale, key1 -> new Long2ObjectOpenHashMap<>()).put(minTileKey, new MultiScreenTileLayer(tilesToRender));
+                        for (long pos : positions) {
+                            toRender[trackedTileLayerFutureIdx].get(currentScale).remove(pos);
+                        }
+                    });
+                }
+            });
+        });
     }
 
     private void loadTiles(WorldScreenv2 worldScreenv2, long originTile) {
@@ -372,12 +337,8 @@ public class RenderTileManager {
 
     public void close() {
         this.executorService.shutdownNow();
-//        this.rendering.forEach((pos, tile) -> tile.close(true));
-
-        for (int loadedIdx = 0; loadedIdx < this.loaded.length; loadedIdx++) {
-
-
-            this.loaded[loadedIdx].clear();
+        for (Long2ObjectOpenHashMap<SingleScreenTileLayer> singleScreenTileLayerLong2ObjectOpenHashMap : this.loaded) {
+            singleScreenTileLayerLong2ObjectOpenHashMap.clear();
         }
         this.tileManager.close();
     }
@@ -393,7 +354,7 @@ public class RenderTileManager {
     }
 
     public static ExecutorService createExecutor() {
-        return createExecutor(Mth.clamp(Runtime.getRuntime().availableProcessors() - 1, 1, 25));
+        return createExecutor(Mth.clamp((Runtime.getRuntime().availableProcessors() - 1) / 2, 1, 25));
     }
 
     public static ExecutorService createExecutor(int processors) {
