@@ -21,7 +21,7 @@ public abstract class TileLayer {
         List<Pair<String, Factory>> tileLayers = new ArrayList<>();
         tileLayers.add(Pair.of("biomes", BiomeLayer::new));
         tileLayers.add(Pair.of("heights", HeightsLayer::new));
-//        tileLayers.add(Pair.of("slime_chunks", SlimeChunkLayer::new));
+        tileLayers.add(Pair.of("slime_chunks", SlimeChunkLayer::new));
 //        map.put("structures", StructuresLayer::new);
         return tileLayers;
     });

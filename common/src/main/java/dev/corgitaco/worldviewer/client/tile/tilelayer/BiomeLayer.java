@@ -18,16 +18,11 @@ import net.minecraft.world.level.biome.Biomes;
 
 public class BiomeLayer extends TileLayer {
 
-    private int[][] colorData;
-
     private NativeImage image;
-
-
 
     public BiomeLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen);
-        this.colorData = buildImage(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks);
-        this.image = makeNativeImageFromColorData(colorData);
+        this.image = makeNativeImageFromColorData(buildImage(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks));
     }
 
     private static int[][] buildImage(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {

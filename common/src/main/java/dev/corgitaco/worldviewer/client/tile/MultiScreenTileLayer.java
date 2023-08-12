@@ -47,6 +47,7 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
         for (int x = 0; x < delegates.length; x++) {
             for (int z = 0; z < delegates[x].length; z++) {
                 ScreenTileLayer delegate = delegates[x][z];
+
                 delegate.setShouldRender(false);
 
                 NativeImage nativeImage = delegate.image();
@@ -61,6 +62,8 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
                         newImage.setPixelRGBA(pixelX + offsetX, pixelZ + offsetZ, pixelRGBA);
                     }
                 }
+
+                delegate.closeAll();
             }
         }
         this.nativeImage = newImage;
@@ -137,9 +140,21 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
     }
 
     @Override
-    public void close() {
+    public void releaseDynamicTextureID() {
         if (this.dynamicTexture != null) {
             this.dynamicTexture.releaseId();
         }
+    }
+
+    @Override
+    public void closeDynamicTexture() {
+        if (this.dynamicTexture != null) {
+            this.dynamicTexture.close();
+        }
+    }
+
+    @Override
+    public void closeNativeImage() {
+        this.nativeImage.close();
     }
 }

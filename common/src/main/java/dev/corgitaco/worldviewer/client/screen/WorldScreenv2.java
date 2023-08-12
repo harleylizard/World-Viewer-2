@@ -139,10 +139,13 @@ public class WorldScreenv2 extends Screen {
 
         long mouseTileKey = shiftingManager.tileKey(mouseWorldPos);
 
-        // TODO: Tooltip
+//        // TODO: Tooltip
 //        SingleScreenTileLayer singleScreenTileLayer = this.renderTileManager.loaded.get(mouseTileKey);
 //
-//        List<Component> toolTip = buildToolTip(mouseWorldPos, this.renderTileManager.getDataTileManager());
+//        List<Component> toolTip = new ArrayList<>();
+//
+//       toolTip.addAll(buildToolTip(mouseWorldPos, this.renderTileManager.getDataTileManager()));
+//
 //        if (singleScreenTileLayer != null) {
 //            int mouseTileLocalX = (mouseWorldPos.getX() - singleScreenTileLayer.getMinTileWorldX());
 //            int mouseTileLocalY = (mouseWorldPos.getZ() - singleScreenTileLayer.getMinTileWorldZ());
@@ -336,8 +339,9 @@ public class WorldScreenv2 extends Screen {
                 }
             } else {
                 int prevShift = this.shiftingManager.getShift();
-                this.shiftingManager = new TileCoordinateShiftingManager((int) Mth.clamp(prevShift - delta, 6, 15));
-                if (prevShift != this.shiftingManager.getShift()) {
+                TileCoordinateShiftingManager newShiftingManager = new TileCoordinateShiftingManager((int) Mth.clamp(prevShift - delta, 6, 15));
+                if (prevShift != newShiftingManager.getShift()) {
+                    this.shiftingManager = newShiftingManager;
                     tileSize = shiftingManager.tileToBlock(1);
                     sampleResolution = Math.max(1, tileSize >> 6);
 

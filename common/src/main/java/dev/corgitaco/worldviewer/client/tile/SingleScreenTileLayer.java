@@ -154,9 +154,21 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
     }
 
     @Override
-    public void close() {
+    public void closeDynamicTexture() {
+        if (this.dynamicTexture != null) {
+            this.dynamicTexture.close();
+        }
+    }
+
+    @Override
+    public void releaseDynamicTextureID() {
         if (this.dynamicTexture != null) {
             this.dynamicTexture.releaseId();
         }
+    }
+
+    @Override
+    public void closeNativeImage() {
+        this.tileLayer.image().close();
     }
 }

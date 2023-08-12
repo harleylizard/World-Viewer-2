@@ -7,7 +7,6 @@ import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import dev.corgitaco.worldviewer.util.LongPackingUtil;
-import io.netty.util.internal.ConcurrentSet;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.*;
 import net.minecraft.Util;
@@ -55,7 +54,7 @@ public class RenderTileManager {
         }
     });
 
-    private final DataTileManager tileManager;
+    private final DataTileManager dataTileManager;
 
 
     public boolean blockGeneration = true;
@@ -63,7 +62,7 @@ public class RenderTileManager {
     public RenderTileManager(WorldScreenv2 worldScreenv2, ServerLevel level, BlockPos origin) {
         this.worldScreenv2 = worldScreenv2;
         this.origin = origin;
-        tileManager = new DataTileManager(ModPlatform.PLATFORM.configDir().resolve(String.valueOf(level.getSeed())), level.getChunkSource().getGenerator(), level.getChunkSource().getGenerator().getBiomeSource(), level, level.getSeed());
+        dataTileManager = new DataTileManager(ModPlatform.PLATFORM.configDir().resolve(String.valueOf(level.getSeed())), level.getChunkSource().getGenerator(), level.getChunkSource().getGenerator().getBiomeSource(), level, level.getSeed());
         long originTile = worldScreenv2.shiftingManager.tileKey(origin);
         loadTiles(worldScreenv2, originTile);
     }
@@ -74,6 +73,10 @@ public class RenderTileManager {
 
                 renderTiles(guiGraphics, this.worldScreenv2, tiles.values());
             });}
+    }
+
+    public DataTileManager getDataTileManager() {
+        return dataTileManager;
     }
 
     private static void renderTiles(GuiGraphics graphics, WorldScreenv2 worldScreenv2, Collection<? extends ScreenTileLayer> renderTiles) {
@@ -135,7 +138,10 @@ public class RenderTileManager {
             CompletableFuture<SingleScreenTileLayer> future = entry.getValue();
             if (future.isCompletedExceptionally()) {
                 try {
-                    future.getNow(null);
+                    SingleScreenTileLayer now = future.getNow(null);
+                    if (now != null) {
+                        now.closeAll();
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                     throw new RuntimeException(e);
@@ -163,16 +169,18 @@ public class RenderTileManager {
                         SingleScreenTileLayer previous = loaded[trackedTileLayerFutureIdx].put(tilePos, singleScreenTileLayer);
                         this.toRender[trackedTileLayerFutureIdx].computeIfAbsent(1, key1 -> new Long2ObjectOpenHashMap<>()).put(tilePos, singleScreenTileLayer);
                         if (previous != null && previous != singleScreenTileLayer) {
-                            previous.close();
+                            previous.closeAll();;
                         }
                     }
                 });
             }
         });
-        toRemove.forEach(this.trackedTileLayerFutures[trackedTileLayerFutureIdx]::remove);
+        toRemove.forEach(k -> this.trackedTileLayerFutures[trackedTileLayerFutureIdx].remove(k));
     }
 
     private void scaleUpTiles(int trackedTileLayerFutureIdx, List<Runnable> toRun) {
+
+        Int2ObjectOpenHashMap<LongSet> uploaded = new Int2ObjectOpenHashMap<>();
         this.toRender[trackedTileLayerFutureIdx].int2ObjectEntrySet().fastForEach((entry) -> {
             int currentScale = entry.getIntKey();
             Long2ObjectOpenHashMap<ScreenTileLayer> tiles = entry.getValue();
@@ -182,6 +190,10 @@ public class RenderTileManager {
 
             tiles.long2ObjectEntrySet().fastForEach(screenTileEntry -> {
                 long tilePos = screenTileEntry.getLongKey();
+                if (uploaded.computeIfAbsent(currentScale, key -> new LongOpenHashSet()).contains(tilePos)) {
+                    return;
+                }
+
                 ScreenTileLayer screenTileLayer = screenTileEntry.getValue();
 
                 int tileX = worldScreenv2.shiftingManager.getTileX(tilePos);
@@ -194,6 +206,10 @@ public class RenderTileManager {
                 int getNextScaleMaxTileZ = (getNextScaleMinTileZ + newScale);
 
                 long minTileKey = LongPackingUtil.tileKey(getNextScaleMinTileX, getNextScaleMinTileZ);
+
+                if (tilePos != minTileKey) {
+                    return;
+                }
 
                 if (!toRender[trackedTileLayerFutureIdx].computeIfAbsent(newScale, key1 -> new Long2ObjectOpenHashMap<>()).containsKey(minTileKey)) {
                     int xRange = Math.abs(getNextScaleMaxTileX - getNextScaleMinTileX);
@@ -221,6 +237,12 @@ public class RenderTileManager {
                             }
                         }
                     }
+
+                    for (long position : positions) {
+                        uploaded.computeIfAbsent(currentScale, key -> new LongOpenHashSet()).add(position);
+                    }
+                    uploaded.computeIfAbsent(newScale, key -> new LongOpenHashSet()).add(minTileKey);
+
                     toRun.add(() -> {
                         toRender[trackedTileLayerFutureIdx].computeIfAbsent(newScale, key1 -> new Long2ObjectOpenHashMap<>()).put(minTileKey, new MultiScreenTileLayer(tilesToRender));
                         for (long pos : positions) {
@@ -271,7 +293,7 @@ public class RenderTileManager {
             var x = worldScreenv2.shiftingManager.getWorldXFromTileKey(tilePos);
             var z = worldScreenv2.shiftingManager.getWorldZFromTileKey(tilePos);
 
-            SingleScreenTileLayer tile = new SingleScreenTileLayer(this.tileManager, TileLayer.FACTORY_REGISTRY.get(finalidx).right(), 63, x, z, tileSize, sampleResolution, worldScreenv2, lastResolution);
+            SingleScreenTileLayer tile = new SingleScreenTileLayer(this.dataTileManager, TileLayer.FACTORY_REGISTRY.get(finalidx).right(), 63, x, z, tileSize, sampleResolution, worldScreenv2, lastResolution);
             changesDetected[finalidx].set(true);
             return tile;
         }, executorService));
@@ -308,7 +330,7 @@ public class RenderTileManager {
                     int maxTileWorldX = tile.getMaxTileWorldX();
                     int maxTileWorldZ = tile.getMaxTileWorldZ();
                     if (!worldScreenv2.worldViewArea.intersects(minTileWorldX, minTileWorldZ, maxTileWorldX, maxTileWorldZ)) {
-                        tile.close();
+                        tile.closeAll();
                         longs.add(tilePos);
                     }
                 });
@@ -322,7 +344,7 @@ public class RenderTileManager {
                 tiles.forEach(key -> {
                     ScreenTileLayer remove = longScreenTileMap.remove(key);
                     if (remove != null) {
-                        remove.close();
+                        remove.closeAll();
                     }
                 });
 
@@ -340,7 +362,7 @@ public class RenderTileManager {
         for (Long2ObjectOpenHashMap<SingleScreenTileLayer> singleScreenTileLayerLong2ObjectOpenHashMap : this.loaded) {
             singleScreenTileLayerLong2ObjectOpenHashMap.clear();
         }
-        this.tileManager.close();
+        this.dataTileManager.close();
     }
 
     public void onScroll() {

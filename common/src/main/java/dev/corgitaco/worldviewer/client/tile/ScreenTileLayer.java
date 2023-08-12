@@ -13,6 +13,7 @@ public interface ScreenTileLayer {
 
 
     int getMaxTileWorldX();
+
     int getMaxTileWorldZ();
 
     void renderTile(GuiGraphics guiGraphics, float scale);
@@ -31,5 +32,14 @@ public interface ScreenTileLayer {
 
     void setShouldRender(boolean shouldRender);
 
-    void close();
+    void closeDynamicTexture();
+
+    void releaseDynamicTextureID();
+
+    void closeNativeImage();
+
+    default void closeAll() {
+        closeNativeImage();
+        closeDynamicTexture();
+    }
 }

@@ -15,7 +15,8 @@
     "KeyMappingAccess",
     "MixinLevelRenderer",
     "MixinOptionsScreen",
-    "NativeImageAccessor"
+    "NativeImageAccessor",
+    "NativeImageMixin"
   ],
   "server": [
   ],
