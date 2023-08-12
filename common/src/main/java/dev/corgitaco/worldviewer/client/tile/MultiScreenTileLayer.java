@@ -5,6 +5,7 @@ import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class MultiScreenTileLayer implements ScreenTileLayer {
@@ -12,6 +13,7 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
     @Nullable
     public DynamicTexture dynamicTexture;
 
+    @NotNull
     public final NativeImage nativeImage;
 
     private boolean shouldRender = true;
@@ -88,7 +90,7 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
 
     @Override
     public void renderTile(GuiGraphics guiGraphics, float scale, float opacity, WorldScreenv2 worldScreenv2) {
-        if (shouldRender) {
+        if (shouldRender && this.nativeImage != null) {
             if (this.dynamicTexture == null) {
                 this.dynamicTexture = new DynamicTexture(this.nativeImage);
             }

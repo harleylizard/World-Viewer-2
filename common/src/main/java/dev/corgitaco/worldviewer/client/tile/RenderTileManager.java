@@ -99,7 +99,6 @@ public class RenderTileManager {
         });
     }
     public void tick() {
-        long startMs = System.currentTimeMillis();
         long originTile = worldScreenv2.shiftingManager.tileKey(this.origin);
         if (!blockGeneration) {
             loadTiles(worldScreenv2, originTile);
@@ -111,11 +110,7 @@ public class RenderTileManager {
         processLayers(toRun);
 
         toRun.forEach(Runnable::run);
-        long endTime = System.currentTimeMillis();
-        long timeTaken = endTime - startMs;
-        if (timeTaken > 5) {
-            System.out.println("Took over 5ms, took: %s".formatted(timeTaken));
-        }
+
     }
 
     private void processLayers(List<Runnable> toRun) {
@@ -124,10 +119,25 @@ public class RenderTileManager {
                 continue;
             }
             changesDetected[trackedTileLayerFutureIdx].set(false);
+            {
+                long startMs = System.currentTimeMillis();
+                processFutures(trackedTileLayerFutureIdx, toRun);
+                long endTime = System.currentTimeMillis();
+                long timeTaken = endTime - startMs;
+                if (timeTaken > 5) {
+                    System.out.println("Processing futures took over 5ms, took: %s".formatted(timeTaken));
+                }
+            }
 
-            processFutures(trackedTileLayerFutureIdx, toRun);
-
-            scaleUpTiles(trackedTileLayerFutureIdx, toRun);
+            {
+                long startMs = System.currentTimeMillis();
+                scaleUpTiles(trackedTileLayerFutureIdx, toRun);
+                long endTime = System.currentTimeMillis();
+                long timeTaken = endTime - startMs;
+                if (timeTaken > 5) {
+                    System.out.println("Scaling tiles took over 5ms, took: %s".formatted(timeTaken));
+                }
+            }
         }
     }
 
@@ -196,6 +206,10 @@ public class RenderTileManager {
                 }
 
                 ScreenTileLayer screenTileLayer = screenTileEntry.getValue();
+
+                if (screenTileLayer.image() == null) {
+                    return;
+                }
 
                 int tileX = worldScreenv2.shiftingManager.getTileX(tilePos);
                 int tileZ = worldScreenv2.shiftingManager.getTileZ(tilePos);

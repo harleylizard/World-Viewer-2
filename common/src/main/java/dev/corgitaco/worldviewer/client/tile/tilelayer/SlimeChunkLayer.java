@@ -64,7 +64,7 @@ public class SlimeChunkLayer extends TileLayer {
         if (colorData != null) {
             this.image = makeNativeImageFromColorData(colorData);
         } else {
-            this.image = new NativeImage(size, size, true);
+            this.image = null;
         }
 
     }

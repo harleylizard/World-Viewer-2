@@ -91,7 +91,7 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
 
     @Override
     public void renderTile(GuiGraphics guiGraphics, float scale, float opacity, WorldScreenv2 worldScreenv2) {
-        if (shouldRender) {
+        if (shouldRender && this.tileLayer.image() != null) {
             if (this.dynamicTexture == null) {
                 this.dynamicTexture = new DynamicTexture(this.tileLayer.image());
             }
@@ -153,6 +153,8 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
 
     @Override
     public void closeNativeImage() {
-        this.tileLayer.image().close();
+        if (this.tileLayer.image() != null) {
+            this.tileLayer.image().close();
+        }
     }
 }
