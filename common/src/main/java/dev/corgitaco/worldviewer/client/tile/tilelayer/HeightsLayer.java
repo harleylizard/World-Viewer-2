@@ -7,22 +7,35 @@ import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.FastColor;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.levelgen.Heightmap;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Collections;
+import java.util.List;
 
 public class HeightsLayer extends TileLayer {
 
+    private final int sampleResolution;
     private NativeImage image;
+
+    private final int[][] heightsData;
+
+
 
     public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         super(tileManager, y, worldX, worldZ, size, sampleResolution, screen);
+        this.sampleResolution = sampleResolution;
 
 
         int sampledSize = size / sampleResolution;
         int[][] colorData = new int[sampledSize][sampledSize];
+        int[][] data = new int[sampledSize][sampledSize];
 
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
         for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
@@ -36,10 +49,12 @@ public class HeightsLayer extends TileLayer {
                 int grayScale = getGrayScale(y, tileManager.serverLevel());
 
                 colorData[sampleX][sampleZ] = grayScale;
+                data[sampleX][sampleZ] = y;
             }
         }
 
         this.image = makeNativeImageFromColorData(colorData);
+        this.heightsData = data;
 
     }
 
@@ -47,6 +62,13 @@ public class HeightsLayer extends TileLayer {
         float pct = Mth.clamp(Mth.inverseLerp(y, 0, 255), 0, 1F);
         int color = Math.round(Mth.clampedLerp(0, 255, pct));
         return FastColor.ARGB32.color(255, color, color, color);
+    }
+
+    @Override
+    public @Nullable List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
+        int y = heightsData[mouseTileLocalX / sampleResolution][mouseTileLocalY / sampleResolution];
+
+        return Collections.singletonList(Component.literal("Ocean Floor Height: " + y));
     }
 
     @Override

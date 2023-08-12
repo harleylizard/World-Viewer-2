@@ -9,24 +9,34 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.FastColor;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Collections;
+import java.util.List;
 
 public class BiomeLayer extends TileLayer {
 
+    private final int sampleResolution;
     private NativeImage image;
+
+    //TODO: Optimized Int->BiomeID storage
+    private final ResourceKey<Biome>[][] biomesData;
+
 
     public BiomeLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen);
-        this.image = makeNativeImageFromColorData(buildImage(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks));
-    }
-
-    private static int[][] buildImage(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
+        this.sampleResolution = sampleResolution;
         int sampledSize = size / sampleResolution;
+
+        ResourceKey<Biome>[][] data = new ResourceKey[sampledSize][sampledSize];
 
         int[][] colorData = new int[sampledSize][sampledSize];
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
@@ -42,6 +52,8 @@ public class BiomeLayer extends TileLayer {
                 int dataX = sampleX;
                 int dataZ = sampleZ;
                 ResourceKey<Biome> biome = biomeHolder.unwrapKey().orElseThrow();
+
+                data[dataX][dataZ] = biome;
                 colorData[dataX][dataZ] = _ARGBToABGR(FAST_COLORS.computeIfAbsent(biome, biomeResourceKey -> {
                     Biome value = biomeHolder.value();
                     float baseTemperature = value.getBaseTemperature();
@@ -55,7 +67,15 @@ public class BiomeLayer extends TileLayer {
 
             }
         }
-        return colorData;
+        this.image = makeNativeImageFromColorData(colorData);
+        this.biomesData = data;
+    }
+
+    @Override
+    public @Nullable List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
+        ResourceKey<Biome> biomeResourceKey = biomesData[mouseTileLocalX / sampleResolution][mouseTileLocalY / sampleResolution];
+
+        return Collections.singletonList(Component.literal("Biome: " + biomeResourceKey.location()).withStyle(Style.EMPTY.withColor(FAST_COLORS.getOrDefault(biomeResourceKey, FastColor.ARGB32.color(255, 255, 255, 255)))));
     }
 
     public static final Object2IntOpenHashMap<ResourceKey<Biome>> FAST_COLORS = Util.make(new Object2IntOpenHashMap<>(), map -> {

@@ -17,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class StructuresLayer extends TileLayer {
@@ -59,7 +60,7 @@ public class StructuresLayer extends TileLayer {
     }
 
     @Override
-    public @Nullable MutableComponent toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
+    public @Nullable List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
         StringBuilder structures = new StringBuilder();
         this.positionsForStructure.forEach((configuredStructureFeatureHolder, longs) -> {
             long mouseChunk = ChunkPos.asLong(SectionPos.blockToSectionCoord(mouseWorldX), SectionPos.blockToSectionCoord(mouseWorldZ));
@@ -70,7 +71,7 @@ public class StructuresLayer extends TileLayer {
                 structures.append(configuredStructureFeatureHolder.unwrapKey().orElseThrow().location().toString());
             }
         });
-        return Component.literal("Structure(s): %s".formatted(structures.toString()));
+        return Collections.singletonList(Component.literal("Structure(s): %s".formatted(structures.toString())));
     }
 
     @Override

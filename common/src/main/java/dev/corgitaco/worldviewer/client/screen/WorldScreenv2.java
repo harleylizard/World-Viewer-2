@@ -5,8 +5,11 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.StructureIconRenderer;
 import dev.corgitaco.worldviewer.client.tile.RenderTileManager;
+import dev.corgitaco.worldviewer.client.tile.SingleScreenTileLayer;
 import dev.corgitaco.worldviewer.client.tile.TileCoordinateShiftingManager;
+import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -20,6 +23,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -129,31 +133,46 @@ public class WorldScreenv2 extends Screen {
         guiGraphics.drawString(Minecraft.getInstance().font, minecraft.fpsString, 0, 0, FastColor.ARGB32.color(255, 255, 255, 255));
 
         if (!overWidget(mouseX, mouseY)) {
-            renderToolTip(guiGraphics, mouseX, mouseY);
+            renderToolTip(guiGraphics, mouseX, mouseY, partialTicks);
         }
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
     }
 
-    private void renderToolTip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    private void renderToolTip(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         BlockPos mouseWorldPos = getMouseWorldPos(mouseX, mouseY);
 
         long mouseTileKey = shiftingManager.tileKey(mouseWorldPos);
 
-//        // TODO: Tooltip
-//        SingleScreenTileLayer singleScreenTileLayer = this.renderTileManager.loaded.get(mouseTileKey);
-//
-//        List<Component> toolTip = new ArrayList<>();
-//
-//       toolTip.addAll(buildToolTip(mouseWorldPos, this.renderTileManager.getDataTileManager()));
-//
-//        if (singleScreenTileLayer != null) {
-//            int mouseTileLocalX = (mouseWorldPos.getX() - singleScreenTileLayer.getMinTileWorldX());
-//            int mouseTileLocalY = (mouseWorldPos.getZ() - singleScreenTileLayer.getMinTileWorldZ());
-//            toolTip.addAll(singleScreenTileLayer.toolTip(mouseX, mouseY, mouseWorldPos.getX(), mouseWorldPos.getZ(), mouseTileLocalX, mouseTileLocalY));
-//            toolTip.add(Component.literal("Sample Resolution: %s blocks".formatted(singleScreenTileLayer.getSampleRes())));
-//            toolTip.add(Component.literal("Tile size: %s blocks ".formatted(singleScreenTileLayer.getSize())));
-//        }
-//        guiGraphics.renderComponentTooltip(Minecraft.getInstance().font, toolTip, mouseX, mouseY);
+        List<Component> toolTip = new ArrayList<>();
+
+        int mouseWorldX = mouseWorldPos.getX();
+        int mouseWorldZ = mouseWorldPos.getZ();
+
+        toolTip.add(Component.literal("x=%s, z=%s".formatted(mouseWorldX, mouseWorldZ)).withStyle(ChatFormatting.BOLD));
+        toolTip.add(Component.literal("").withStyle(ChatFormatting.BOLD));
+
+
+        for (int i = 0; i < this.renderTileManager.loaded.length; i++) {
+            Long2ObjectOpenHashMap<SingleScreenTileLayer> layerLong2ObjectOpenHashMap = this.renderTileManager.loaded[i];
+            if (layerLong2ObjectOpenHashMap != null) {
+                SingleScreenTileLayer singleScreenTileLayer = layerLong2ObjectOpenHashMap.get(mouseTileKey);
+
+                if (singleScreenTileLayer != null) {
+                    int mouseTileLocalX = (mouseWorldPos.getX() - singleScreenTileLayer.getMinTileWorldX());
+                    int mouseTileLocalY = (mouseWorldPos.getZ() - singleScreenTileLayer.getMinTileWorldZ());
+                    List<Component> components = singleScreenTileLayer.toolTip(mouseX, mouseY, mouseWorldPos.getX(), mouseWorldPos.getZ(), mouseTileLocalX, mouseTileLocalY);
+
+                    if (!components.isEmpty()) {
+                        toolTip.add(Component.literal("\"" + TileLayer.FACTORY_REGISTRY.get(i).first() + "\" " + " layer").withStyle(Style.EMPTY.withBold(true).withUnderlined(true)));
+                        toolTip.addAll(components);
+                        toolTip.add(Component.literal("Sample Resolution: %s blocks".formatted(singleScreenTileLayer.getSampleRes())));
+                        toolTip.add(Component.literal("Tile size: %s blocks ".formatted(singleScreenTileLayer.getSize())));
+                    }
+                }
+            }
+        }
+
+        guiGraphics.renderTooltip(Minecraft.getInstance().font, toolTip, Optional.empty(), mouseX, mouseY);
     }
 
     @NotNull
@@ -170,27 +189,6 @@ public class WorldScreenv2 extends Screen {
     private BlockPos getMouseWorldPos(double mouseX, double mouseY) {
         Vec3 mouseWorldVec3 = getMouseWorldVec3(mouseX, mouseY);
         return new BlockPos((int) mouseWorldVec3.x, (int) mouseWorldVec3.y, (int) mouseWorldVec3.z);
-    }
-
-
-    private static List<Component> buildToolTip(BlockPos mouseWorldPos, DataTileManager dataTileManager) {
-        List<Component> components = new ArrayList<>();
-        int mouseWorldX = mouseWorldPos.getX();
-        int mouseWorldZ = mouseWorldPos.getZ();
-
-        components.add(Component.literal("x=%s, z=%s".formatted(mouseWorldX, mouseWorldZ)).withStyle(ChatFormatting.BOLD));
-
-//        ResourceKey<Biome> biomeResourceKey = dataTileManager.getBiomeRaw(mouseWorldX, mouseWorldZ).unwrapKey().orElseThrow();
-//        int styleColor = FastColor.ARGB32.multiply(FastColor.ARGB32.color(255, 255, 255, 255), BiomeLayer.FAST_COLORS.getInt(biomeResourceKey));
-//        components.add(Component.literal("Biome: " + biomeResourceKey.location().toString()).setStyle(Style.EMPTY.withColor(styleColor)));
-//
-//        boolean slimeChunkRaw = dataTileManager.isSlimeChunkRaw(SectionPos.blockToSectionCoord(mouseWorldX), SectionPos.blockToSectionCoord(mouseWorldZ));
-//        components.add(Component.literal("Slime Chunk? %s".formatted(slimeChunkRaw ? "Yes" : "No")).setStyle(Style.EMPTY.withColor(slimeChunkRaw ? FastColor.ARGB32.color(124, 120, 190, 93) : FastColor.ARGB32.color(255, 255, 255, 255))));
-//
-//        int oceanFloorHeight = dataTileManager.getHeightRaw(Heightmap.Types.OCEAN_FLOOR, mouseWorldX, mouseWorldZ);
-//        components.add(Component.literal("Surface height = %s".formatted(oceanFloorHeight)));
-
-        return components;
     }
 
     private void drawGrid(GuiGraphics guiGraphics) {

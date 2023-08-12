@@ -69,7 +69,7 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
 
     @Nullable
     public List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
-        return null;
+        return this.tileLayer.toolTip(mouseScreenX, mouseScreenY, mouseWorldX, mouseWorldZ, mouseTileLocalX, mouseTileLocalY);
     }
 
 
