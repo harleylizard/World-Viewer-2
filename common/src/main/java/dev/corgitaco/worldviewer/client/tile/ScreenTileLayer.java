@@ -1,8 +1,9 @@
 package dev.corgitaco.worldviewer.client.tile;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
+import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.RenderStateShard;
 
 public interface ScreenTileLayer {
 
@@ -16,9 +17,9 @@ public interface ScreenTileLayer {
 
     int getMaxTileWorldZ();
 
-    void renderTile(GuiGraphics guiGraphics, float scale);
+    void renderTile(GuiGraphics guiGraphics, float scale, float opacity, WorldScreenv2 worldScreenv2);
 
-    RenderStateShard.TransparencyStateShard transparencyStateShard();
+    TileLayer.Renderer renderer();
 
     NativeImage image();
 
@@ -37,6 +38,7 @@ public interface ScreenTileLayer {
     void releaseDynamicTextureID();
 
     void closeNativeImage();
+
 
     default void closeAll() {
         closeNativeImage();

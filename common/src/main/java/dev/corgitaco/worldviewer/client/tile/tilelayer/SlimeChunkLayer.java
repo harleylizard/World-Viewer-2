@@ -50,14 +50,6 @@ public class SlimeChunkLayer extends TileLayer {
                                 }
                             }
                         }
-                    } else {
-//                        for (int xMove = 0; xMove < 16; xMove++) {
-//                            for (int zMove = 0; zMove < 16; zMove++) {
-//                                int dataX = SectionPos.sectionToBlockCoord(x) + xMove;
-//                                int dataZ = SectionPos.sectionToBlockCoord(z) + zMove;
-//                                colorData1[dataX][dataZ] = BiomeLayer._ARGBToABGR(FastColor.ARGB32.color(0, 0, 0, 0));
-//                            }
-//                        }
                     }
                 }
             }
@@ -68,8 +60,6 @@ public class SlimeChunkLayer extends TileLayer {
             colorData = null;
             this.slimeChunkData = null;
         }
-
-
 
         if (colorData != null) {
             this.image = makeNativeImageFromColorData(colorData);

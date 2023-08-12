@@ -1,15 +1,16 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import dev.corgitaco.worldviewer.client.ClientUtil;
+import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
-import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.RenderStateShard;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -19,12 +20,11 @@ import java.util.List;
 public abstract class TileLayer {
 
 
-    public static final List<Pair<String, Factory>> FACTORY_REGISTRY = Util.make(() -> {
-        List<Pair<String, Factory>> tileLayers = new ArrayList<>();
-        tileLayers.add(Pair.of("biomes", BiomeLayer::new));
-        tileLayers.add(Pair.of("heights", HeightsLayer::new));
-        tileLayers.add(Pair.of("slime_chunks", SlimeChunkLayer::new));
-//        map.put("structures", StructuresLayer::new);
+    public static final List<TileLayerRegistryEntry> FACTORY_REGISTRY = Util.make(() -> {
+        List<TileLayerRegistryEntry> tileLayers = new ArrayList<>();
+        tileLayers.add(new TileLayerRegistryEntry("biomes", 1, BiomeLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry("heights", 0.5F, HeightsLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry("slime_chunks", 1, SlimeChunkLayer::new));
         return tileLayers;
     });
 
@@ -63,18 +63,30 @@ public abstract class TileLayer {
         return nativeImage;
     }
 
-    public float opacity() {
+    public float defaultOpacity() {
         return 0.7F;
     }
 
-    public RenderStateShard.TransparencyStateShard transparencyStateShard() {
-        return RenderStateShard.NO_TRANSPARENCY;
+    public Renderer renderer() {
+        return (graphics, size1, id, opacity, worldScreenv2) -> {
+            VertexConsumer vertexConsumer = graphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(id, RenderType.NO_TRANSPARENCY));
+            ClientUtil.blit(vertexConsumer, graphics.pose(), opacity, 0, 0, 0F, 0F, size1, size1, size1, size1);
+        };
     }
 
     @FunctionalInterface
     public interface Factory {
 
         TileLayer make(DataTileManager tileManager, int scrollWorldY, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledDataChunks);
+    }
+
+    @FunctionalInterface
+    public interface Renderer {
+
+        void render(GuiGraphics graphics, int size, int id, float opacity, WorldScreenv2 screenv2);
+    }
+
+    public record TileLayerRegistryEntry(String name, float defaultOpacity, Factory factory) {
     }
 }
 

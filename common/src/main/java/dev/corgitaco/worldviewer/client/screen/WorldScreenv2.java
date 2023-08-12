@@ -8,11 +8,13 @@ import dev.corgitaco.worldviewer.client.tile.RenderTileManager;
 import dev.corgitaco.worldviewer.client.tile.SingleScreenTileLayer;
 import dev.corgitaco.worldviewer.client.tile.TileCoordinateShiftingManager;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
-import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractSliderButton;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.PlayerInfo;
@@ -40,6 +42,7 @@ import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.*;
+import java.util.function.DoubleConsumer;
 
 import static dev.corgitaco.worldviewer.util.LongPackingUtil.getTileX;
 import static dev.corgitaco.worldviewer.util.LongPackingUtil.getTileZ;
@@ -95,6 +98,56 @@ public class WorldScreenv2 extends Screen {
 
         this.renderTileManager = new RenderTileManager(this, level, origin);
         this.structureIconRenderer = new StructureIconRenderer(this.level);
+
+        int buttonWidth = 120;
+        int buttonHeight = 20;
+        List<AbstractWidget> opacity = new ArrayList<>();
+        for (TileLayer.TileLayerRegistryEntry registryEntry : TileLayer.FACTORY_REGISTRY) {
+            String key = registryEntry.name();
+            opacities.put(key, registryEntry.defaultOpacity());
+            opacity.add(new Slider(0, 0, buttonWidth, buttonHeight, Component.literal("%s opacity".formatted(key)), registryEntry.defaultOpacity(), value -> {
+                opacities.put(key, (float) Mth.clamp(value, 0F, 1F));
+            }));
+        }
+
+        int itemHeight = buttonHeight + 2;
+
+        int bottomPos = this.height - 70;
+        int listRenderedHeight = bottomPos + (buttonHeight * 3);
+
+        this.opacityList = new WidgetList(opacity, buttonWidth + 10, listRenderedHeight, bottomPos, listRenderedHeight + 10, itemHeight);
+
+
+        int biomeButtonWidth = 150;
+        List<AbstractWidget> widgets = new ArrayList<>();
+        this.level.getChunkSource().getGenerator().getBiomeSource().possibleBiomes().stream().sorted(Comparator.comparing(biomeHolder -> biomeHolder.unwrapKey().orElseThrow().location(), ResourceLocation::compareTo)).forEach(possibleBiome -> {
+            ResourceKey<Biome> biomeResourceKey = possibleBiome.unwrapKey().orElseThrow();
+            ResourceLocation location = biomeResourceKey.location();
+            widgets.add(new Button(0, 0, biomeButtonWidth, 20, Component.translatable("biome." + location.getNamespace() + "." + location.getPath()), button -> {
+                if (highlightedBiome == biomeResourceKey) {
+                    highlightedBiome = null;
+                } else {
+                    highlightedBiome = biomeResourceKey;
+                }
+            }, key -> Component.empty()));
+        });
+
+        int highLightBiomeButtonHeight = 10;
+
+        int biomeListHeight = bottomPos;
+
+
+        int middle = height - (height / 2);
+
+        int biomeSelectorHeight = ((highLightBiomeButtonHeight + 2) * 10);
+        int listBottom = middle - biomeSelectorHeight / 2;
+        int listTop = middle + (biomeSelectorHeight / 2);
+        this.highlightBiomes = new WidgetList(widgets, biomeButtonWidth + 10, biomeListHeight, listBottom, listTop, highLightBiomeButtonHeight + 10);
+
+        this.opacityList.setLeftPos(0);
+        this.highlightBiomes.setLeftPos(width - highlightBiomes.getRowWidth() - 1);
+        addRenderableWidget(this.opacityList);
+        addRenderableWidget(this.highlightBiomes);
         super.init();
     }
 
@@ -163,7 +216,7 @@ public class WorldScreenv2 extends Screen {
                     List<Component> components = singleScreenTileLayer.toolTip(mouseX, mouseY, mouseWorldPos.getX(), mouseWorldPos.getZ(), mouseTileLocalX, mouseTileLocalY);
 
                     if (!components.isEmpty()) {
-                        toolTip.add(Component.literal("\"" + TileLayer.FACTORY_REGISTRY.get(i).first() + "\" " + " layer").withStyle(Style.EMPTY.withBold(true).withUnderlined(true)));
+                        toolTip.add(Component.literal("\"" + TileLayer.FACTORY_REGISTRY.get(i).name() + "\" " + " layer").withStyle(Style.EMPTY.withBold(true).withUnderlined(true)));
                         toolTip.addAll(components);
                         toolTip.add(Component.literal("Sample Resolution: %s blocks".formatted(singleScreenTileLayer.getSampleRes())));
                         toolTip.add(Component.literal("Tile size: %s blocks ".formatted(singleScreenTileLayer.getSize())));
@@ -420,4 +473,23 @@ public class WorldScreenv2 extends Screen {
         return getTileZ(getOriginTile()) - this.shiftingManager.blockToTile(worldZ);
     }
 
+    private static class Slider extends AbstractSliderButton {
+
+        private final DoubleConsumer apply;
+
+        public Slider(int x, int y, int width, int height, Component message, double value, DoubleConsumer apply) {
+            super(x, y, width, height, message, value);
+            this.apply = apply;
+        }
+
+        @Override
+        protected void updateMessage() {
+
+        }
+
+        @Override
+        protected void applyValue() {
+            this.apply.accept(this.value);
+        }
+    }
 }

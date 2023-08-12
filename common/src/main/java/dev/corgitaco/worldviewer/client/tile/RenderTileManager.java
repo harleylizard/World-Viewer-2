@@ -69,9 +69,10 @@ public class RenderTileManager {
 
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks, WorldScreenv2 worldScreenv2) {
         for (int toRenderIDX = 0; toRenderIDX < this.toRender.length; toRenderIDX++) {
+            int finalToRenderIDX = toRenderIDX;
             this.toRender[toRenderIDX].forEach((scale, tiles) -> {
 
-                renderTiles(guiGraphics, this.worldScreenv2, tiles.values());
+                renderTiles(guiGraphics, worldScreenv2.opacities.getOrDefault(TileLayer.FACTORY_REGISTRY.get(finalToRenderIDX).name(), 1F), this.worldScreenv2, tiles.values());
             });}
     }
 
@@ -79,7 +80,7 @@ public class RenderTileManager {
         return dataTileManager;
     }
 
-    private static void renderTiles(GuiGraphics graphics, WorldScreenv2 worldScreenv2, Collection<? extends ScreenTileLayer> renderTiles) {
+    private static void renderTiles(GuiGraphics graphics, float opacity, WorldScreenv2 worldScreenv2, Collection<? extends ScreenTileLayer> renderTiles) {
         PoseStack poseStack = graphics.pose();
         renderTiles.forEach(tileToRender -> {
             if (tileToRender != null) {
@@ -92,7 +93,7 @@ public class RenderTileManager {
                 poseStack.pushPose();
                 poseStack.translate(screenTileMinX, screenTileMinZ, 0);
                 poseStack.mulPose(Axis.ZN.rotationDegrees(180));
-                tileToRender.renderTile(graphics, worldScreenv2.scale);
+                tileToRender.renderTile(graphics, worldScreenv2.scale, opacity, worldScreenv2);
                 poseStack.popPose();
             }
         });
@@ -293,7 +294,7 @@ public class RenderTileManager {
             var x = worldScreenv2.shiftingManager.getWorldXFromTileKey(tilePos);
             var z = worldScreenv2.shiftingManager.getWorldZFromTileKey(tilePos);
 
-            SingleScreenTileLayer tile = new SingleScreenTileLayer(this.dataTileManager, TileLayer.FACTORY_REGISTRY.get(finalidx).right(), 63, x, z, tileSize, sampleResolution, worldScreenv2, lastResolution);
+            SingleScreenTileLayer tile = new SingleScreenTileLayer(this.dataTileManager, TileLayer.FACTORY_REGISTRY.get(finalidx).factory(), 63, x, z, tileSize, sampleResolution, worldScreenv2, lastResolution);
             changesDetected[finalidx].set(true);
             return tile;
         }, executorService));

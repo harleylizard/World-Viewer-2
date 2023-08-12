@@ -13,6 +13,7 @@
   ],
   "client": [
     "KeyMappingAccess",
+    "MixinGameRenderer",
     "MixinLevelRenderer",
     "MixinOptionsScreen",
     "NativeImageAccessor",

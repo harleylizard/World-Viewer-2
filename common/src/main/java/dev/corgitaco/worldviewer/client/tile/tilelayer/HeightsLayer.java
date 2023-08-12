@@ -1,14 +1,14 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.FastColor;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
@@ -25,8 +25,6 @@ public class HeightsLayer extends TileLayer {
     private NativeImage image;
 
     private final int[][] heightsData;
-
-
 
     public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         super(tileManager, y, worldX, worldZ, size, sampleResolution, screen);
@@ -72,13 +70,17 @@ public class HeightsLayer extends TileLayer {
     }
 
     @Override
-    public float opacity() {
+    public float defaultOpacity() {
         return 0.5F;
     }
 
+
     @Override
-    public RenderStateShard.TransparencyStateShard transparencyStateShard() {
-        return WVRenderType.DST_COLOR_SRC_ALPHA_TRANSPARENCY;
+    public Renderer renderer() {
+        return (graphics, size1, id, opacity, worldScreenv2) -> {
+            VertexConsumer vertexConsumer = graphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(id, WVRenderType.DST_COLOR_SRC_ALPHA_TRANSPARENCY));
+            ClientUtil.blit(vertexConsumer, graphics.pose(), opacity, 0, 0, 0F, 0F, size1, size1, size1, size1);
+        };
     }
 
     @Override

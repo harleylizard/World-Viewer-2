@@ -1,12 +1,15 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.corgitaco.worldviewer.client.ClientUtil;
+import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.Util;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
@@ -18,6 +21,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix4f;
 
 import java.util.Collections;
 import java.util.List;
@@ -69,6 +73,31 @@ public class BiomeLayer extends TileLayer {
         }
         this.image = makeNativeImageFromColorData(colorData);
         this.biomesData = data;
+    }
+
+    @Override
+    public Renderer renderer() {
+        return (graphics, size1, id, opacity, worldScreenv2) -> {
+            Matrix4f matrix = graphics.pose().last().pose();
+            if (worldScreenv2.highlightedBiome != null) {
+                if (FAST_COLORS.containsKey(worldScreenv2.highlightedBiome)) {
+                    int color = FAST_COLORS.getInt(worldScreenv2.highlightedBiome);
+                    VertexConsumer vertexConsumer = graphics.bufferSource().getBuffer(WVRenderType.COLOR_FILTER_WORLD_VIEWER_GUI.apply(id, RenderType.NO_TRANSPARENCY));
+                    float a = FastColor.ARGB32.alpha(color) / 255F;
+
+                    float r = FastColor.ARGB32.red(color) / 255F;
+                    float g = FastColor.ARGB32.green(color) / 255F;
+                    float b = FastColor.ARGB32.blue(color) / 255F;
+
+                    vertexConsumer.vertex(matrix, (float) 0, (float) size1, (float) 0).color(1F, 1F, 1F, opacity).uv(0, 1).color(r, g, b, a).endVertex();
+                    vertexConsumer.vertex(matrix, (float) size1, (float) size1, (float) 0).color(1F, 1F, 1F, opacity).uv(1, 1).color(r, g, b, a).endVertex();
+                    vertexConsumer.vertex(matrix, (float) size1, (float) 0, (float) 0).color(1F, 1F, 1F, opacity).uv(1, 0).color(r, g, b, a).endVertex();
+                    vertexConsumer.vertex(matrix, (float) 0, (float) 0, (float) 0).color(1F, 1F, 1F, opacity).uv(0, 0).color(r, g, b, a).endVertex();
+                    return;
+                }
+            }
+            super.renderer().render(graphics, size1, id, opacity, worldScreenv2);
+        };
     }
 
     @Override
