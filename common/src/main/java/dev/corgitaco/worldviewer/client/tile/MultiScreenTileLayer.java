@@ -23,12 +23,10 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
     private final int maxWorldZ;
 
     private final int size;
-    private final float opacity;
     private final TileLayer.Renderer renderer;
 
     public MultiScreenTileLayer(ScreenTileLayer[][] delegates) {
         ScreenTileLayer firstDelegate = delegates[0][0];
-        this.opacity = firstDelegate.opacity();
         this.renderer = firstDelegate.renderer();
         this.minWorldX = firstDelegate.getMinTileWorldX();
         this.minWorldZ = firstDelegate.getMinTileWorldZ();
@@ -111,11 +109,6 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
     @Override
     public int size() {
         return this.size;
-    }
-
-    @Override
-    public float opacity() {
-        return this.opacity;
     }
 
     @Override

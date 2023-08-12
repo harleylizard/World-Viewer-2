@@ -62,12 +62,10 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
 
     }
 
-
     @Nullable
     public List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
         return this.tileLayer.toolTip(mouseScreenX, mouseScreenY, mouseWorldX, mouseWorldZ, mouseTileLocalX, mouseTileLocalY);
     }
-
 
     public void afterTilesRender(GuiGraphics guiGraphics, float opacity) {
         this.tileLayer.afterTilesRender(guiGraphics, opacity, getMinTileWorldX(), getMinTileWorldZ());
@@ -112,15 +110,9 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
     }
 
     @Override
-    public float opacity() {
-        return this.tileLayer.defaultOpacity();
-    }
-
-    @Override
     public int size() {
         return this.size;
     }
-
 
     public int getSampleRes() {
         return sampleRes;

@@ -69,11 +69,6 @@ public class HeightsLayer extends TileLayer {
         return Collections.singletonList(Component.literal("Ocean Floor Height: " + y));
     }
 
-    @Override
-    public float defaultOpacity() {
-        return 0.5F;
-    }
-
 
     @Override
     public Renderer renderer() {

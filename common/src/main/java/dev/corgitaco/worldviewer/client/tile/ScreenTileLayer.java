@@ -23,8 +23,6 @@ public interface ScreenTileLayer {
 
     NativeImage image();
 
-    float opacity();
-
     int size();
 
     boolean sampleResCheck(int worldScreenSampleRes);

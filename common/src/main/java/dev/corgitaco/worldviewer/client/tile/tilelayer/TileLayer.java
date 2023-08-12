@@ -63,10 +63,6 @@ public abstract class TileLayer {
         return nativeImage;
     }
 
-    public float defaultOpacity() {
-        return 0.7F;
-    }
-
     public Renderer renderer() {
         return (graphics, size1, id, opacity, worldScreenv2) -> {
             VertexConsumer vertexConsumer = graphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(id, RenderType.NO_TRANSPARENCY));
