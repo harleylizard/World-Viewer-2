@@ -2,6 +2,8 @@ package dev.corgitaco.worldviewer.client;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -17,11 +19,14 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
-public class StructureIconRenderer {
+public class StructureIconRenderer implements AutoCloseable {
 
     private final Object2ObjectOpenHashMap<Holder<Structure>, StructureRender> structureRendering = new Object2ObjectOpenHashMap<>();
+    private final List<AutoCloseable> closeables = new ArrayList<>();
 
 
     public StructureIconRenderer(ServerLevel level) {
@@ -42,36 +47,44 @@ public class StructureIconRenderer {
                 if (!structureRendering.containsKey(structure)) {
                     StructureRender structureRender;
                     ResourceManager resourceManager = Minecraft.getInstance().getResourceManager();
-                    ResourceLocation resourceLocation = new ResourceLocation(location.getNamespace(), "worldview/icon/structure/" + location.getPath() + ".png");
+                    ResourceLocation resourceLocation = new ResourceLocation(location.getNamespace(), "worldviewer/icon/structure/" + location.getPath() + ".png");
 
                     Optional<Resource> resource = resourceManager.getResource(resourceLocation);
                     if (resource.isPresent()) {
-                        try (DynamicTexture texture = new DynamicTexture(NativeImage.read(resource.get().open()))) {
 
-                            structureRender = (guiGraphics, minDrawX, minDrawZ, maxDrawX, maxDrawZ, opacity, scale) -> {
-                                var pixels = texture.getPixels();
-                                if (pixels == null) {
-                                    return;
-                                }
-
-                                int drawX = (maxDrawX - minDrawX / 2);
-                                int drawZ = (maxDrawZ - minDrawZ / 2);
-
-                                int width = (int) (pixels.getWidth() / scale);
-                                int height = (int) (pixels.getHeight() / scale);
-                                guiGraphics.blit(resourceLocation, drawX - (width / 2), drawZ - (height / 2), 0.0F, 0.0F, width, height, width, height);
-                                RenderSystem.disableBlend();
-                            };
-
+                        DynamicTexture texture;
+                        try {
+                            texture = new DynamicTexture(NativeImage.read(resource.get().open()));
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
 
+                        closeables.add(texture);
 
+                        structureRender = (guiGraphics, minDrawX, minDrawZ, maxDrawX, maxDrawZ, opacity, scale) -> {
+                            var pixels = texture.getPixels();
+                            if (pixels == null) {
+                                return;
+                            }
+
+                            int drawX = (maxDrawX - minDrawX / 2);
+                            int drawZ = (maxDrawZ - minDrawZ / 2);
+
+                            int scaledWidth = (int) (pixels.getWidth() / scale);
+                            int scaledHeight = (int) (pixels.getHeight() / scale);
+                            PoseStack poseStack = guiGraphics.pose();
+                            poseStack.pushPose();
+                            poseStack.translate(drawX, drawZ, 0);
+                            poseStack.mulPose(Axis.ZN.rotationDegrees(180));
+                            poseStack.translate(-drawX, -drawZ, 0);
+                            guiGraphics.blit(resourceLocation, drawX - (scaledWidth / 2), drawZ - (scaledHeight / 2), 0.0F, 0.0F, scaledWidth, scaledHeight, scaledWidth, scaledHeight);
+                            poseStack.popPose();
+
+                            RenderSystem.disableBlend();
+                        };
                     } else {
                         structureRender = (guiGraphics, minDrawX, minDrawZ, maxDrawX, maxDrawZ, opacity, scale) -> guiGraphics.fill(minDrawX, minDrawZ, maxDrawX, maxDrawZ, FastColor.ARGB32.color((int) (255 * opacity), r, g, b));
                     }
-
                     this.structureRendering.put(structure, structureRender);
                 }
             }
@@ -80,6 +93,17 @@ public class StructureIconRenderer {
 
     public Object2ObjectOpenHashMap<Holder<Structure>, StructureRender> getStructureRendering() {
         return structureRendering;
+    }
+
+    @Override
+    public void close() {
+        for (AutoCloseable closeable : this.closeables) {
+            try {
+                closeable.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @FunctionalInterface

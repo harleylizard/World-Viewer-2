@@ -165,6 +165,7 @@ public class WorldScreenv2 extends Screen {
     @Override
     public void onClose() {
         this.renderTileManager.close();
+        this.structureIconRenderer.close();
         super.onClose();
     }
 
