@@ -25,6 +25,7 @@ public abstract class TileLayer {
         tileLayers.add(new TileLayerRegistryEntry("biomes", 1, BiomeLayer::new));
         tileLayers.add(new TileLayerRegistryEntry("heights", 0.5F, HeightsLayer::new));
         tileLayers.add(new TileLayerRegistryEntry("slime_chunks", 1, SlimeChunkLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry("structures", 1, StructuresLayer::new));
         return tileLayers;
     });
 
@@ -41,7 +42,7 @@ public abstract class TileLayer {
         return Collections.emptyList();
     }
 
-    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ) {
+    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ, WorldScreenv2 screenv2) {
     }
 
     @Nullable

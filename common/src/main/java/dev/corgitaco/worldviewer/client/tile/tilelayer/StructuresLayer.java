@@ -47,8 +47,7 @@ public class StructuresLayer extends TileLayer {
     }
 
     @Override
-    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ) {
-
+    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ, WorldScreenv2 screenv2) {
         this.positionsForStructure.forEach(((configuredStructureFeatureHolder, longs) -> {
             for (long structureChunkPos : longs) {
                 int structureWorldX = SectionPos.sectionToBlockCoord(ChunkPos.getX(structureChunkPos)) - tileMinWorldX;

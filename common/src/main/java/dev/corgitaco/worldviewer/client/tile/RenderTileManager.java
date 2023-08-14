@@ -71,9 +71,14 @@ public class RenderTileManager {
         for (int toRenderIDX = 0; toRenderIDX < this.toRender.length; toRenderIDX++) {
             int finalToRenderIDX = toRenderIDX;
             this.toRender[toRenderIDX].forEach((scale, tiles) -> {
-
                 renderTiles(guiGraphics, worldScreenv2.opacities.getOrDefault(TileLayer.FACTORY_REGISTRY.get(finalToRenderIDX).name(), 1F), this.worldScreenv2, tiles.values());
-            });}
+            });
+        }
+
+        for (int toRenderIDX = 0; toRenderIDX < this.loaded.length; toRenderIDX++) {
+            int finalToRenderIDX = toRenderIDX;
+            renderTilesAfter(guiGraphics, worldScreenv2.opacities.getOrDefault(TileLayer.FACTORY_REGISTRY.get(finalToRenderIDX).name(), 1F), this.worldScreenv2, this.loaded[toRenderIDX].values());
+        }
     }
 
     public DataTileManager getDataTileManager() {
@@ -98,6 +103,26 @@ public class RenderTileManager {
             }
         });
     }
+
+    private static void renderTilesAfter(GuiGraphics graphics, float opacity, WorldScreenv2 worldScreenv2, Collection<? extends SingleScreenTileLayer> renderTiles) {
+        PoseStack poseStack = graphics.pose();
+        renderTiles.forEach(tileToRender -> {
+            if (tileToRender != null) {
+                int localX = (int) worldScreenv2.getLocalXFromWorldX(tileToRender.getMinTileWorldX());
+                int localZ = (int) worldScreenv2.getLocalZFromWorldZ(tileToRender.getMinTileWorldZ());
+
+                int screenTileMinX = (worldScreenv2.getScreenCenterX() + localX);
+                int screenTileMinZ = (worldScreenv2.getScreenCenterZ() + localZ);
+
+                poseStack.pushPose();
+                poseStack.translate(screenTileMinX, screenTileMinZ, 0);
+                poseStack.mulPose(Axis.ZN.rotationDegrees(180));
+                tileToRender.afterTilesRender(graphics, worldScreenv2.scale, opacity, worldScreenv2);
+                poseStack.popPose();
+            }
+        });
+    }
+
     public void tick() {
         long originTile = worldScreenv2.shiftingManager.tileKey(this.origin);
         if (!blockGeneration) {
@@ -180,7 +205,8 @@ public class RenderTileManager {
                         SingleScreenTileLayer previous = loaded[trackedTileLayerFutureIdx].put(tilePos, singleScreenTileLayer);
                         this.toRender[trackedTileLayerFutureIdx].computeIfAbsent(1, key1 -> new Long2ObjectOpenHashMap<>()).put(tilePos, singleScreenTileLayer);
                         if (previous != null && previous != singleScreenTileLayer) {
-                            previous.closeAll();;
+                            previous.closeAll();
+                            ;
                         }
                     }
                 });
