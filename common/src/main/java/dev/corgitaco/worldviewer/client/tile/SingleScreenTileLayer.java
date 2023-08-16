@@ -4,17 +4,23 @@ import com.mojang.blaze3d.platform.NativeImage;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
+import dev.corgitaco.worldviewer.mixin.NativeImageAccessor;
+import dev.corgitaco.worldviewer.platform.ModPlatform;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 public class SingleScreenTileLayer implements ScreenTileLayer {
-
 
     private final TileLayer tileLayer;
 
@@ -34,7 +40,7 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
 
     private final LongSet sampledChunks = new LongOpenHashSet();
 
-    public SingleScreenTileLayer(DataTileManager tileManager, TileLayer.Factory factory, int scrollY, int minTileWorldX, int minTileWorldZ, int size, int sampleRes, WorldScreenv2 worldScreenv2, @Nullable SingleScreenTileLayer lastResolution) {
+    public SingleScreenTileLayer(DataTileManager tileManager, String name, TileLayer.GenerationFactory generationFactory, @Nullable TileLayer.DiskFactory diskFactory, int scrollY, int minTileWorldX, int minTileWorldZ, int size, int sampleRes, WorldScreenv2 worldScreenv2, @Nullable SingleScreenTileLayer lastResolution) {
         TileLayer tileLayer1 = null;
         this.minTileWorldX = minTileWorldX;
         this.minTileWorldZ = minTileWorldZ;
@@ -44,22 +50,55 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
         this.size = size;
         this.sampleRes = sampleRes;
 
-        if (lastResolution != null) {
-            sampledChunks.addAll(lastResolution.sampledChunks);
-            if (!lastResolution.tileLayer.usesLod()) {
-                tileLayer1 = lastResolution.tileLayer;
+        Path imagePath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(name).resolve("image").resolve("p." + worldScreenv2.shiftingManager.blockToTile(minTileWorldX) + "-" + worldScreenv2.shiftingManager.blockToTile(minTileWorldZ) + "_s." + sampleRes + ".png");
+        Path dataPath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(name).resolve("data").resolve("p." + worldScreenv2.shiftingManager.blockToTile(minTileWorldX) + "-" + worldScreenv2.shiftingManager.blockToTile(minTileWorldZ) + "_s." + sampleRes + ".dat");
+
+        if (diskFactory != null) {
+            try {
+                tileLayer1 = diskFactory.fromDisk(size, imagePath, dataPath);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        if (tileLayer1 == null) {
+            if (lastResolution != null) {
+                sampledChunks.addAll(lastResolution.sampledChunks);
+                if (!lastResolution.tileLayer.usesLod()) {
+                    tileLayer1 = lastResolution.tileLayer;
+                }
+            }
+            if (tileLayer1 == null) {
+                tileLayer1 = generationFactory.make(tileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, worldScreenv2, sampledChunks);
+            }
+            if (sampleRes == worldScreenv2.sampleResolution) {
+                sampledChunks.forEach(tileManager::unloadTile);
+            }
+
+            try {
+                NativeImage image = tileLayer1.image();
+                if (((NativeImageAccessor) (Object) image).wvGetPixels() != 0L) {
+
+
+                    if (image != null) {
+                        Files.createDirectories(imagePath.getParent());
+                        Files.write(imagePath, new byte[0]);
+                        image.writeToFile(imagePath);
+                    }
+
+                    CompoundTag tag = tileLayer1.tag();
+                    if (tag != null) {
+
+                        Files.createDirectories(dataPath.getParent());
+                        Files.write(dataPath, new byte[0]);
+                        NbtIo.write(tag, dataPath.toFile());
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
 
-        if (tileLayer1 == null) {
-            tileLayer1 = factory.make(tileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, worldScreenv2, sampledChunks);
-        }
         this.tileLayer = tileLayer1;
-        if (sampleRes == worldScreenv2.sampleResolution) {
-            sampledChunks.forEach(tileManager::unloadTile);
-        }
-
-
     }
 
     @Nullable

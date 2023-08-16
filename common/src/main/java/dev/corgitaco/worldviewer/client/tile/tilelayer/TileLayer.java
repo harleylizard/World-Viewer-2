@@ -10,9 +10,11 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -22,20 +24,19 @@ public abstract class TileLayer {
 
     public static final List<TileLayerRegistryEntry> FACTORY_REGISTRY = Util.make(() -> {
         List<TileLayerRegistryEntry> tileLayers = new ArrayList<>();
-        tileLayers.add(new TileLayerRegistryEntry("biomes", 1, BiomeLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry("map", 1, TopBlockMapLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry("heights", 0.5F, HeightsLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry("slime_chunks", 1, SlimeChunkLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry("structures", 1, StructuresLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry("biomes", 1, BiomeLayer::new, BiomeLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry("map", 1, TopBlockMapLayer::new, TopBlockMapLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry("heights", 0.5F, HeightsLayer::new, HeightsLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry("slime_chunks", 1, SlimeChunkLayer::new, null));
+        tileLayers.add(new TileLayerRegistryEntry("structures", 1, StructuresLayer::new, null));
         return tileLayers;
     });
 
-    protected int size;
-    protected WorldScreenv2 screen;
 
     public TileLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
-        this.size = size;
-        this.screen = screen;
+    }
+
+    public TileLayer(int size, Path imagePath, Path dataPath) throws Exception {
     }
 
     @Nullable
@@ -48,6 +49,11 @@ public abstract class TileLayer {
 
     @Nullable
     public abstract NativeImage image();
+
+    @Nullable
+    public CompoundTag tag() {
+        return null;
+    }
 
     public boolean usesLod() {
         return true;
@@ -73,9 +79,13 @@ public abstract class TileLayer {
     }
 
     @FunctionalInterface
-    public interface Factory {
+    public interface GenerationFactory {
 
         TileLayer make(DataTileManager tileManager, int scrollWorldY, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledDataChunks);
+    }
+
+    public interface DiskFactory {
+        TileLayer fromDisk(int size,  Path imagePath, Path dataPath) throws Exception;
     }
 
     @FunctionalInterface
@@ -84,7 +94,7 @@ public abstract class TileLayer {
         void render(GuiGraphics graphics, int size, int id, float opacity, WorldScreenv2 screenv2);
     }
 
-    public record TileLayerRegistryEntry(String name, float defaultOpacity, Factory factory) {
+    public record TileLayerRegistryEntry(String name, float defaultOpacity, GenerationFactory generationFactory, @Nullable DiskFactory diskFactory) {
     }
 }
 

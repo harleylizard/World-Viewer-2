@@ -34,7 +34,7 @@ public class DataTile {
         }
     });
 
-    private final DataTileBiomeStorage biomes;
+    private final OptimizedBiomeStorage biomes;
 
     private Set<Holder<Structure>> structures = null;
 
@@ -57,7 +57,7 @@ public class DataTile {
         }
         {
             Registry<Biome> biomeRegistry = tileManager.serverLevel().registryAccess().registryOrThrow(Registries.BIOME);
-            this.biomes = new DataTileBiomeStorage(tag.getCompound("biomes"), biomeRegistry);
+            this.biomes = new OptimizedBiomeStorage(tag.getCompound("biomes"), biomeRegistry);
         }
         {
             if (tag.contains("structures")) {
@@ -79,7 +79,7 @@ public class DataTile {
     public DataTile(long pos, DataTileManager manager) {
         this.pos = pos;
         this.manager = manager;
-        this.biomes = new DataTileBiomeStorage();
+        this.biomes = new OptimizedBiomeStorage(4);
         this.isSlimeChunk = manager.isSlimeChunkRaw(ChunkPos.getX(pos), ChunkPos.getZ(pos));
     }
 

@@ -334,7 +334,7 @@ public class RenderTileManager {
             var x = worldScreenv2.shiftingManager.getWorldXFromTileKey(tilePos);
             var z = worldScreenv2.shiftingManager.getWorldZFromTileKey(tilePos);
 
-            SingleScreenTileLayer tile = new SingleScreenTileLayer(this.dataTileManager, TileLayer.FACTORY_REGISTRY.get(finalidx).factory(), 63, x, z, tileSize, sampleResolution, worldScreenv2, lastResolution);
+            SingleScreenTileLayer tile = new SingleScreenTileLayer(this.dataTileManager, TileLayer.FACTORY_REGISTRY.get(finalidx).name(), TileLayer.FACTORY_REGISTRY.get(finalidx).generationFactory(), TileLayer.FACTORY_REGISTRY.get(finalidx).diskFactory(), 63, x, z, tileSize, sampleResolution, worldScreenv2, lastResolution);
             changesDetected[finalidx].set(true);
             return tile;
         }, executorService));

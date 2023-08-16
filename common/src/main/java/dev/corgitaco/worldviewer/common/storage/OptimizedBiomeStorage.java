@@ -13,10 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 
-public class DataTileBiomeStorage {
-
-    private static final int SIZE = 4;
-
+public class OptimizedBiomeStorage {
 
     public final int[] values;
 
@@ -24,20 +21,20 @@ public class DataTileBiomeStorage {
 
 
     @SuppressWarnings("unchecked")
-    public DataTileBiomeStorage(CompoundTag tag, Registry<Biome> biomeRegistry) {
+    public OptimizedBiomeStorage(CompoundTag tag, Registry<Biome> biomeRegistry) {
         this.values = tag.getIntArray("values");
 
         this.lookUp = tag.getList("lookup", CompoundTag.TAG_STRING).stream().map(tag1 -> (StringTag) tag1).map(StringTag::getAsString).map(ResourceLocation::new)
                 .map(location -> ResourceKey.create(Registries.BIOME, location)).map(biomeRegistry::getHolderOrThrow).toArray(Holder[]::new);
     }
 
-    public DataTileBiomeStorage(int[] values, Holder<Biome>[] lookUp) {
+    public OptimizedBiomeStorage(int[] values, Holder<Biome>[] lookUp) {
         this.values = values;
         this.lookUp = lookUp;
     }
 
-    public DataTileBiomeStorage() {
-        this(new int[SIZE * SIZE], new Holder[0]);
+    public OptimizedBiomeStorage(int size) {
+        this(new int[size * size], new Holder[0]);
         Arrays.fill(values, -1);
     }
 
@@ -94,12 +91,12 @@ public class DataTileBiomeStorage {
         return this.lookUp[value];
     }
 
-    private static int getIndex(int x, int z) {
-        return x + z * SIZE;
+    private int getIndex(int x, int z) {
+        return x + z * ((int) Math.sqrt(this.values.length - 1));
     }
 
     @FunctionalInterface
-    interface BiomeGetter {
+    public interface BiomeGetter {
 
         Holder<Biome> get(int worldX, int worldZ);
     }

@@ -13,6 +13,10 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 public class TopBlockMapLayer extends TileLayer {
 
     private final NativeImage image;
@@ -50,6 +54,15 @@ public class TopBlockMapLayer extends TileLayer {
             this.image = nativeImage;
         } else {
             image = null;
+        }
+    }
+
+    public TopBlockMapLayer(int size, Path imagePath, Path dataPath) throws Exception {
+        super(size, imagePath, dataPath);
+        try {
+            this.image = NativeImage.read(Files.readAllBytes(imagePath));
+        } catch (IOException e) {
+            throw e;
         }
     }
 

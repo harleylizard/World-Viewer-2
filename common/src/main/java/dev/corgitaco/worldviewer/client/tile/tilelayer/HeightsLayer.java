@@ -8,6 +8,8 @@ import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FastColor;
 import net.minecraft.util.Mth;
@@ -16,6 +18,9 @@ import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
@@ -24,7 +29,7 @@ public class HeightsLayer extends TileLayer {
     private final int sampleResolution;
     private NativeImage image;
 
-    private final int[][] heightsData;
+    private final int[] heightsData;
 
     public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         super(tileManager, y, worldX, worldZ, size, sampleResolution, screen, sampledChunks);
@@ -33,7 +38,7 @@ public class HeightsLayer extends TileLayer {
 
         int sampledSize = size / sampleResolution;
         int[][] colorData = new int[sampledSize][sampledSize];
-        int[][] data = new int[sampledSize][sampledSize];
+        int[] data = new int[sampledSize * sampledSize];
 
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
         for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
@@ -47,13 +52,25 @@ public class HeightsLayer extends TileLayer {
                 int grayScale = getGrayScale(y, tileManager.serverLevel());
 
                 colorData[sampleX][sampleZ] = grayScale;
-                data[sampleX][sampleZ] = y;
+                data[sampleX + sampleZ * sampledSize] = y;
             }
         }
 
         this.image = makeNativeImageFromColorData(colorData);
         this.heightsData = data;
+    }
 
+    public HeightsLayer(int size, Path imagePath, Path dataPath) throws Exception {
+        super(size, imagePath, dataPath);
+
+        try {
+            CompoundTag compoundTag = NbtIo.read(dataPath.toFile());
+            this.heightsData = compoundTag.getIntArray("heights");
+            this.sampleResolution = compoundTag.getInt("res");
+            this.image = NativeImage.read(Files.readAllBytes(imagePath));
+        } catch (IOException e) {
+            throw e;
+        }
     }
 
     public static int getGrayScale(int y, LevelHeightAccessor heightAccessor) {
@@ -64,7 +81,7 @@ public class HeightsLayer extends TileLayer {
 
     @Override
     public @Nullable List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
-        int y = heightsData[mouseTileLocalX / sampleResolution][mouseTileLocalY / sampleResolution];
+        int y = heightsData[(mouseTileLocalX / sampleResolution) + (mouseTileLocalY / sampleResolution) * ((int) Math.sqrt(this.heightsData.length - 1))];
 
         return Collections.singletonList(Component.literal("Ocean Floor Height: " + y));
     }
@@ -81,5 +98,14 @@ public class HeightsLayer extends TileLayer {
     @Override
     public NativeImage image() {
         return this.image;
+    }
+
+    @Override
+    @Nullable
+    public  CompoundTag tag() {
+        CompoundTag compoundTag = new CompoundTag();
+        compoundTag.putIntArray("heights", this.heightsData);
+        compoundTag.putInt("res", this.sampleResolution);
+        return compoundTag;
     }
 }
