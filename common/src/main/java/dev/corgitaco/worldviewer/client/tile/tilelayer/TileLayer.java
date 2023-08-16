@@ -23,6 +23,7 @@ public abstract class TileLayer {
     public static final List<TileLayerRegistryEntry> FACTORY_REGISTRY = Util.make(() -> {
         List<TileLayerRegistryEntry> tileLayers = new ArrayList<>();
         tileLayers.add(new TileLayerRegistryEntry("biomes", 1, BiomeLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry("map", 1, TopBlockMapLayer::new));
         tileLayers.add(new TileLayerRegistryEntry("heights", 0.5F, HeightsLayer::new));
         tileLayers.add(new TileLayerRegistryEntry("slime_chunks", 1, SlimeChunkLayer::new));
         tileLayers.add(new TileLayerRegistryEntry("structures", 1, StructuresLayer::new));
@@ -32,7 +33,7 @@ public abstract class TileLayer {
     protected int size;
     protected WorldScreenv2 screen;
 
-    public TileLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen) {
+    public TileLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         this.size = size;
         this.screen = screen;
     }

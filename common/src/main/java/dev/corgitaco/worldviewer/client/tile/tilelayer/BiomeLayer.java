@@ -2,7 +2,6 @@ package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
@@ -36,7 +35,7 @@ public class BiomeLayer extends TileLayer {
 
 
     public BiomeLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
-        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen);
+        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, sampledChunks);
         this.sampleResolution = sampleResolution;
         int sampledSize = size / sampleResolution;
 
@@ -185,15 +184,7 @@ public class BiomeLayer extends TileLayer {
         int b = FastColor.ARGB32.blue(argb);
         int a = FastColor.ARGB32.alpha(argb);
 
-        return ClientUtil.combineNative(a, b, g, r);
-    }
-
-    public static int _ABGRToARGB(int abgr) {
-        int a = ClientUtil.getNativeA(abgr);
-        int b = ClientUtil.getNativeB(abgr);
-        int g = ClientUtil.getNativeG(abgr);
-        int r = ClientUtil.getNativeR(abgr);
-        return FastColor.ARGB32.color(a, r, g, b);
+        return FastColor.ABGR32.color(a, b, g, r);
     }
     @Override
     public NativeImage image() {

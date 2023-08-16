@@ -23,7 +23,7 @@ public class SlimeChunkLayer extends TileLayer {
     private final boolean[][] slimeChunkData;
 
     public SlimeChunkLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
-        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen);
+        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, sampledChunks);
         int[][] colorData;
         int dataSize = SectionPos.blockToSectionCoord(size);
 

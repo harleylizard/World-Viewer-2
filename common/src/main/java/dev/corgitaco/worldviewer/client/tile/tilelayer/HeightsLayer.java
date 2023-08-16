@@ -27,7 +27,7 @@ public class HeightsLayer extends TileLayer {
     private final int[][] heightsData;
 
     public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
-        super(tileManager, y, worldX, worldZ, size, sampleResolution, screen);
+        super(tileManager, y, worldX, worldZ, size, sampleResolution, screen, sampledChunks);
         this.sampleResolution = sampleResolution;
 
 
@@ -59,7 +59,7 @@ public class HeightsLayer extends TileLayer {
     public static int getGrayScale(int y, LevelHeightAccessor heightAccessor) {
         float pct = Mth.clamp(Mth.inverseLerp(y, 0, 255), 0, 1F);
         int color = Math.round(Mth.clampedLerp(0, 255, pct));
-        return FastColor.ARGB32.color(255, color, color, color);
+        return FastColor.ABGR32.color(255, color, color, color);
     }
 
     @Override

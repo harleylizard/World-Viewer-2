@@ -391,7 +391,7 @@ public class WorldScreenv2 extends Screen {
                 }
             } else {
                 int prevShift = this.shiftingManager.getShift();
-                TileCoordinateShiftingManager newShiftingManager = new TileCoordinateShiftingManager((int) Mth.clamp(prevShift - delta, 6, 15));
+                TileCoordinateShiftingManager newShiftingManager = new TileCoordinateShiftingManager((int) Mth.clamp(prevShift - delta, 4, 15));
                 if (prevShift != newShiftingManager.getShift()) {
                     this.shiftingManager = newShiftingManager;
                     tileSize = shiftingManager.tileToBlock(1);

@@ -10,7 +10,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import org.jetbrains.annotations.Nullable;
@@ -26,7 +25,7 @@ public class StructuresLayer extends TileLayer {
     private final WorldScreenv2 screen;
 
     public StructuresLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet loadedChunks) {
-        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen);
+        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, loadedChunks);
         this.screen = screen;
 
         if (size >= 256) {
