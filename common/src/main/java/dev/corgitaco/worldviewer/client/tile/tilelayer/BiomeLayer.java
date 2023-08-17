@@ -27,6 +27,7 @@ import net.minecraft.world.level.biome.Biomes;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,9 +37,10 @@ import java.util.List;
 public class BiomeLayer extends TileLayer {
 
     private final int sampleResolution;
-    private NativeImage image;
+    @Nullable
+    private final NativeImage image;
 
-    //TODO: Optimized Int->BiomeID storage
+    @Nullable
     private final OptimizedBiomeStorage biomesData;
 
 
@@ -49,7 +51,7 @@ public class BiomeLayer extends TileLayer {
 
         OptimizedBiomeStorage data = new OptimizedBiomeStorage(sampledSize);
 
-        int[][] colorData = new int[sampledSize][sampledSize];
+        NativeImage image = new NativeImage(sampledSize, sampledSize, true);
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
         for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
             for (int sampleZ = 0; sampleZ < sampledSize; sampleZ++) {
@@ -66,7 +68,7 @@ public class BiomeLayer extends TileLayer {
 
                 data.getBiome(dataX, dataZ, worldX, worldZ, (worldX1, worldZ1) -> biomeHolder);
 
-                colorData[dataX][dataZ] = _ARGBToABGR(FAST_COLORS.computeIfAbsent(biome, biomeResourceKey -> {
+                image.setPixelRGBA(dataX, dataZ, _ARGBToABGR(FAST_COLORS.computeIfAbsent(biome, biomeResourceKey -> {
                     Biome value = biomeHolder.value();
                     float baseTemperature = value.getBaseTemperature();
                     float lerp = Mth.inverseLerp(baseTemperature, -2, 2);
@@ -75,23 +77,32 @@ public class BiomeLayer extends TileLayer {
                     int b = (int) Mth.clampedLerp(240, 0, lerp);
 
                     return FastColor.ARGB32.color(255, r, g, b);
-                }));
+                })));
 
             }
         }
-        this.image = makeNativeImageFromColorData(colorData);
+        this.image = image;
         this.biomesData = data;
     }
 
     public BiomeLayer(int size, Path imagePath, Path dataPath) throws Exception {
         super(size, imagePath, dataPath);
-        try {
-            CompoundTag compoundTag = NbtIo.read(dataPath.toFile());
-            this.biomesData = new OptimizedBiomeStorage(compoundTag.getCompound("biomes"), Minecraft.getInstance().level.registryAccess().registryOrThrow(Registries.BIOME));
-            this.sampleResolution = compoundTag.getInt("res");
-            this.image = NativeImage.read(Files.readAllBytes(imagePath));
-        } catch (IOException e) {
-            throw e;
+        File dataPathFile = dataPath.toFile();
+        File imagePathFile = imagePath.toFile();
+        if (dataPathFile.exists() && imagePathFile.exists()) {
+            try {
+                CompoundTag compoundTag = NbtIo.read(dataPathFile);
+                this.biomesData = new OptimizedBiomeStorage(compoundTag.getCompound("biomes"), Minecraft.getInstance().level.registryAccess().registryOrThrow(Registries.BIOME));
+                this.sampleResolution = compoundTag.getInt("res");
+                this.image = NativeImage.read(Files.readAllBytes(imagePath));
+            } catch (IOException e) {
+                throw e;
+            }
+
+        } else {
+            this.biomesData = null;
+            this.sampleResolution = Integer.MIN_VALUE;
+            this.image = null;
         }
     }
 
@@ -121,11 +132,16 @@ public class BiomeLayer extends TileLayer {
     }
 
     @Override
+    public boolean isComplete() {
+        return this.image != null && this.biomesData != null && this.sampleResolution > 0;
+    }
+
+    @Override
     @Nullable
     public List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
         int storageX = mouseTileLocalX / sampleResolution;
-        int sorageZ = mouseTileLocalY / sampleResolution;
-        Holder<Biome> biomeResourceKey = this.biomesData.getBiome(storageX, sorageZ, mouseWorldX, mouseWorldZ, (worldX1, worldZ1) -> null);
+        int storageZ = mouseTileLocalY / sampleResolution;
+        Holder<Biome> biomeResourceKey = this.biomesData.getBiome(storageX, storageZ, mouseWorldX, mouseWorldZ, (worldX1, worldZ1) -> null);
 
         return Collections.singletonList(Component.literal("Biome: " + biomeResourceKey.unwrapKey().get().location()).withStyle(Style.EMPTY.withColor(FAST_COLORS.getOrDefault(biomeResourceKey, FastColor.ARGB32.color(255, 255, 255, 255)))));
     }

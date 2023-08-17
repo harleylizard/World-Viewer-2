@@ -18,6 +18,7 @@ import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,8 +28,11 @@ import java.util.List;
 public class HeightsLayer extends TileLayer {
 
     private final int sampleResolution;
-    private NativeImage image;
 
+    @Nullable
+    private final NativeImage image;
+
+    @Nullable
     private final int[] heightsData;
 
     public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
@@ -37,7 +41,7 @@ public class HeightsLayer extends TileLayer {
 
 
         int sampledSize = size / sampleResolution;
-        int[][] colorData = new int[sampledSize][sampledSize];
+        NativeImage colorData = new NativeImage(sampledSize, sampledSize, true);
         int[] data = new int[sampledSize * sampledSize];
 
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
@@ -51,25 +55,32 @@ public class HeightsLayer extends TileLayer {
 
                 int grayScale = getGrayScale(y, tileManager.serverLevel());
 
-                colorData[sampleX][sampleZ] = grayScale;
+                colorData.setPixelRGBA(sampleX, sampleZ, grayScale);
                 data[sampleX + sampleZ * sampledSize] = y;
             }
         }
 
-        this.image = makeNativeImageFromColorData(colorData);
+        this.image = colorData;
         this.heightsData = data;
     }
 
     public HeightsLayer(int size, Path imagePath, Path dataPath) throws Exception {
         super(size, imagePath, dataPath);
-
-        try {
-            CompoundTag compoundTag = NbtIo.read(dataPath.toFile());
-            this.heightsData = compoundTag.getIntArray("heights");
-            this.sampleResolution = compoundTag.getInt("res");
-            this.image = NativeImage.read(Files.readAllBytes(imagePath));
-        } catch (IOException e) {
-            throw e;
+        File dataPathFile = dataPath.toFile();
+        File imagePathFile = imagePath.toFile();
+        if (dataPathFile.exists() && imagePathFile.exists()) {
+            try {
+                CompoundTag compoundTag = NbtIo.read(dataPath.toFile());
+                this.heightsData = compoundTag.getIntArray("heights");
+                this.sampleResolution = compoundTag.getInt("res");
+                this.image = NativeImage.read(Files.readAllBytes(imagePath));
+            } catch (IOException e) {
+                throw e;
+            }
+        } else {
+            this.heightsData = null;
+            this.image = null;
+            this.sampleResolution = Integer.MIN_VALUE;
         }
     }
 
@@ -93,6 +104,11 @@ public class HeightsLayer extends TileLayer {
             VertexConsumer vertexConsumer = graphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(id, WVRenderType.DST_COLOR_SRC_ALPHA_TRANSPARENCY));
             ClientUtil.blit(vertexConsumer, graphics.pose(), opacity, 0, 0, 0F, 0F, size1, size1, size1, size1);
         };
+    }
+
+    @Override
+    public boolean isComplete() {
+        return this.image != null && this.heightsData != null && this.sampleResolution > 0;
     }
 
     @Override

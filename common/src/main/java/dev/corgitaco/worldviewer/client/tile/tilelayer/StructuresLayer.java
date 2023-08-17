@@ -6,6 +6,7 @@ import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongArraySet;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
@@ -15,13 +16,12 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class StructuresLayer extends TileLayer {
 
-    private final Map<Holder<Structure>, LongSet> positionsForStructure = Collections.synchronizedMap(new HashMap<>());
+    private final Map<Holder<Structure>, LongSet> positionsForStructure = new Reference2ObjectOpenHashMap<>();
     private final WorldScreenv2 screen;
 
     public StructuresLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet loadedChunks) {
@@ -75,5 +75,10 @@ public class StructuresLayer extends TileLayer {
     @Override
     public @Nullable NativeImage image() {
         return null;
+    }
+
+    @Override
+    public boolean isComplete() {
+        return this.positionsForStructure != null;
     }
 }

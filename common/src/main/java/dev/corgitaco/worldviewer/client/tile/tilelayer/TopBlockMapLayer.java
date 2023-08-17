@@ -19,6 +19,7 @@ import java.nio.file.Path;
 
 public class TopBlockMapLayer extends TileLayer {
 
+    @Nullable
     private final NativeImage image;
 
     public TopBlockMapLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
@@ -59,10 +60,14 @@ public class TopBlockMapLayer extends TileLayer {
 
     public TopBlockMapLayer(int size, Path imagePath, Path dataPath) throws Exception {
         super(size, imagePath, dataPath);
-        try {
-            this.image = NativeImage.read(Files.readAllBytes(imagePath));
-        } catch (IOException e) {
-            throw e;
+        if (imagePath.toFile().exists()) {
+            try {
+                this.image = NativeImage.read(Files.readAllBytes(imagePath));
+            } catch (IOException e) {
+                throw e;
+            }
+        } else {
+            this.image = null;
         }
     }
 
@@ -70,5 +75,10 @@ public class TopBlockMapLayer extends TileLayer {
     @Nullable
     public NativeImage image() {
         return this.image;
+    }
+
+    @Override
+    public boolean isComplete() {
+        return this.image != null;
     }
 }

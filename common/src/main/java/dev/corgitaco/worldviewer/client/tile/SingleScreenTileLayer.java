@@ -19,8 +19,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 public class SingleScreenTileLayer implements ScreenTileLayer {
+
+    private static final ExecutorService SAVING_SERVICE = RenderTileManager.createExecutor(1);
 
     private final TileLayer tileLayer;
 
@@ -67,36 +70,38 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
                     tileLayer1 = lastResolution.tileLayer;
                 }
             }
-            if (tileLayer1 == null) {
-                tileLayer1 = generationFactory.make(tileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, worldScreenv2, sampledChunks);
-            }
-            if (sampleRes == worldScreenv2.sampleResolution) {
-                sampledChunks.forEach(tileManager::unloadTile);
-            }
-
-            try {
-                NativeImage image = tileLayer1.image();
-                if (((NativeImageAccessor) (Object) image).wvGetPixels() != 0L) {
-
-
-                    if (image != null) {
-                        Files.createDirectories(imagePath.getParent());
-                        Files.write(imagePath, new byte[0]);
-                        image.writeToFile(imagePath);
+        }
+        if (tileLayer1 == null || !tileLayer1.isComplete()) {
+            tileLayer1 = generationFactory.make(tileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, worldScreenv2, sampledChunks);
+            TileLayer finalTileLayer = tileLayer1;
+            SAVING_SERVICE.submit(() -> {
+                try {
+                    NativeImage image = finalTileLayer.image();
+                    if (image != null && ((NativeImageAccessor) (Object) image).wvGetPixels() != 0L) {
+                        if (image != null) {
+                            Files.createDirectories(imagePath.getParent());
+                            image.writeToFile(imagePath);
+                        }
                     }
 
-                    CompoundTag tag = tileLayer1.tag();
+                    CompoundTag tag = finalTileLayer.tag();
                     if (tag != null) {
-
                         Files.createDirectories(dataPath.getParent());
-                        Files.write(dataPath, new byte[0]);
                         NbtIo.write(tag, dataPath.toFile());
                     }
+
+                    Thread.sleep(50);
+                } catch (IOException | InterruptedException e) {
+                    e.printStackTrace();
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            });
+
         }
+        if (sampleRes == worldScreenv2.sampleResolution) {
+            sampledChunks.forEach(tileManager::unloadTile);
+        }
+
+
 
         this.tileLayer = tileLayer1;
     }

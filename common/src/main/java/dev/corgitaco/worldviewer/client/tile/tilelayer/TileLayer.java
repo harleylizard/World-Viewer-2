@@ -27,7 +27,7 @@ public abstract class TileLayer {
         tileLayers.add(new TileLayerRegistryEntry("biomes", 1, BiomeLayer::new, BiomeLayer::new));
         tileLayers.add(new TileLayerRegistryEntry("map", 1, TopBlockMapLayer::new, TopBlockMapLayer::new));
         tileLayers.add(new TileLayerRegistryEntry("heights", 0.5F, HeightsLayer::new, HeightsLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry("slime_chunks", 1, SlimeChunkLayer::new, null));
+        tileLayers.add(new TileLayerRegistryEntry("slime_chunks", 1, SlimeChunkLayer::new, SlimeChunkLayer::new));
         tileLayers.add(new TileLayerRegistryEntry("structures", 1, StructuresLayer::new, null));
         return tileLayers;
     });
@@ -77,6 +77,8 @@ public abstract class TileLayer {
             ClientUtil.blit(vertexConsumer, graphics.pose(), opacity, 0, 0, 0F, 0F, size1, size1, size1, size1);
         };
     }
+
+    public abstract boolean isComplete();
 
     @FunctionalInterface
     public interface GenerationFactory {
