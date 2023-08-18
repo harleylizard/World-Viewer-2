@@ -30,12 +30,13 @@ public class SlimeChunkLayer extends TileLayer {
 
     public SlimeChunkLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, sampledChunks);
-        int[][] colorData;
+        NativeImage nativeImage;
         int dataSize = SectionPos.blockToSectionCoord(size);
 
         boolean[] data = new boolean[dataSize * dataSize];
         if (sampleResolution <= 16 && size <= 128) {
-            int[][] colorData1 = new int[size][size];
+            this.sampleResolution = screen.sampleResolution;
+            nativeImage = new NativeImage(size, size, true);
             for (int x = 0; x < dataSize; x++) {
                 for (int z = 0; z < dataSize; z++) {
                     int chunkX = SectionPos.blockToSectionCoord(tileWorldX) + x;
@@ -44,13 +45,12 @@ public class SlimeChunkLayer extends TileLayer {
                     sampledChunks.add(ChunkPos.asLong(chunkX, chunkZ));
                     if (tileManager.isSlimeChunk(chunkX, chunkZ)) {
                         data[x + z * dataSize] = true;
-
                         for (int xMove = 0; xMove < 16; xMove++) {
                             for (int zMove = 0; zMove < 16; zMove++) {
                                 if (xMove <= 1 || xMove >= 14 || zMove <= 1 || zMove >= 14) {
                                     int dataX = SectionPos.sectionToBlockCoord(x) + xMove;
                                     int dataZ = SectionPos.sectionToBlockCoord(z) + zMove;
-                                    colorData1[dataX][dataZ] = BiomeLayer._ARGBToABGR(FastColor.ARGB32.color(255, 120, 190, 93));
+                                    nativeImage.setPixelRGBA(dataX, dataZ, BiomeLayer._ARGBToABGR(FastColor.ARGB32.color(255, 120, 190, 93)));
                                 } else {
                                     BiomeLayer._ARGBToABGR(FastColor.ARGB32.color(0, 0, 0, 0));
                                 }
@@ -59,27 +59,25 @@ public class SlimeChunkLayer extends TileLayer {
                     }
                 }
             }
-            colorData = colorData1;
             this.slimeChunkData = data;
 
         } else {
-            colorData = null;
+            nativeImage = null;
             this.slimeChunkData = null;
         }
 
-        if (colorData != null) {
-            this.image = makeNativeImageFromColorData(colorData);
-        } else {
-            this.image = null;
-        }
+        this.image = nativeImage;
     }
 
-    public SlimeChunkLayer(int size, Path imagePath, Path dataPath) throws Exception {
-        super(size, imagePath, dataPath);
+    public SlimeChunkLayer(int size, Path imagePath, Path dataPath, int sampleRes) throws Exception {
+        super(size, imagePath, dataPath, sampleRes);
 
         File dataPathFile = dataPath.toFile();
         File imagePathFile = imagePath.toFile();
         if (dataPathFile.exists() && imagePathFile.exists()) {
+            while (!imagePathFile.canRead() || !dataPathFile.canRead()) {
+                Thread.sleep(1);
+            }
             try {
                 CompoundTag compoundTag = NbtIo.read(dataPathFile);
                 byte[] slimeChunks = compoundTag.getByteArray("slime_chunks");
@@ -90,6 +88,7 @@ public class SlimeChunkLayer extends TileLayer {
                 }
 
                 this.slimeChunkData = slimeChunkData;
+                this.sampleResolution = compoundTag.getInt("res");
                 this.image = NativeImage.read(Files.readAllBytes(imagePath));
             } catch (IOException e) {
                 throw e;
@@ -130,7 +129,13 @@ public class SlimeChunkLayer extends TileLayer {
             slimeChunks[i] = (byte) (slimeChunkData[i] ? 1 : 0);
         }
 
+        compoundTag.putInt("res", this.sampleResolution);
         compoundTag.putByteArray("slime_chunks", slimeChunks);
         return super.tag();
+    }
+
+    @Override
+    public boolean usesLod() {
+        return false;
     }
 }

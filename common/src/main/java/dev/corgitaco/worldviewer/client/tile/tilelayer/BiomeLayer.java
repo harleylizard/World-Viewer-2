@@ -36,7 +36,6 @@ import java.util.List;
 
 public class BiomeLayer extends TileLayer {
 
-    private final int sampleResolution;
     @Nullable
     private final NativeImage image;
 
@@ -46,7 +45,6 @@ public class BiomeLayer extends TileLayer {
 
     public BiomeLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, sampledChunks);
-        this.sampleResolution = sampleResolution;
         int sampledSize = size / sampleResolution;
 
         OptimizedBiomeStorage data = new OptimizedBiomeStorage(sampledSize);
@@ -85,11 +83,15 @@ public class BiomeLayer extends TileLayer {
         this.biomesData = data;
     }
 
-    public BiomeLayer(int size, Path imagePath, Path dataPath) throws Exception {
-        super(size, imagePath, dataPath);
+    public BiomeLayer(int size, Path imagePath, Path dataPath, int sampleResolution) throws Exception {
+        super(size, imagePath, dataPath, sampleResolution);
         File dataPathFile = dataPath.toFile();
         File imagePathFile = imagePath.toFile();
         if (dataPathFile.exists() && imagePathFile.exists()) {
+            while (!imagePathFile.canRead() || !dataPathFile.canRead()) {
+                Thread.sleep(1);
+            }
+
             try {
                 CompoundTag compoundTag = NbtIo.read(dataPathFile);
                 this.biomesData = new OptimizedBiomeStorage(compoundTag.getCompound("biomes"), Minecraft.getInstance().level.registryAccess().registryOrThrow(Registries.BIOME));

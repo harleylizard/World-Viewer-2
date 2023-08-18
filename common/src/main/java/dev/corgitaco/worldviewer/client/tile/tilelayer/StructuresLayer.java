@@ -73,6 +73,11 @@ public class StructuresLayer extends TileLayer {
     }
 
     @Override
+    public boolean usesLod() {
+        return false;
+    }
+
+    @Override
     public @Nullable NativeImage image() {
         return null;
     }

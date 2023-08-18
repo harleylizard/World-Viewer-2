@@ -7,12 +7,15 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.util.FastColor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,6 +28,7 @@ public class TopBlockMapLayer extends TileLayer {
     public TopBlockMapLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, sampledChunks);
         if (size <= 128) {
+            this.sampleResolution = screen.sampleResolution;
             NativeImage nativeImage = new NativeImage(size, size, true);
             BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
             for (int chunkX = 0; chunkX < SectionPos.blockToSectionCoord(size); chunkX++) {
@@ -58,11 +62,20 @@ public class TopBlockMapLayer extends TileLayer {
         }
     }
 
-    public TopBlockMapLayer(int size, Path imagePath, Path dataPath) throws Exception {
-        super(size, imagePath, dataPath);
-        if (imagePath.toFile().exists()) {
+    public TopBlockMapLayer(int size, Path imagePath, Path dataPath, int sampleRes) throws Exception {
+        super(size, imagePath, dataPath, sampleRes);
+        File imagePathFile = imagePath.toFile();
+        File dataPathFile = dataPath.toFile();
+        if (imagePathFile.exists() && dataPathFile.exists()) {
+            while (!imagePathFile.canRead() || !dataPathFile.canRead()) {
+                Thread.sleep(1);
+            }
+
             try {
                 this.image = NativeImage.read(Files.readAllBytes(imagePath));
+                CompoundTag read = NbtIo.read(dataPathFile);
+
+                this.sampleResolution = read.getInt("res");
             } catch (IOException e) {
                 throw e;
             }
@@ -80,5 +93,17 @@ public class TopBlockMapLayer extends TileLayer {
     @Override
     public boolean isComplete() {
         return this.image != null;
+    }
+
+    @Override
+    public boolean usesLod() {
+        return false;
+    }
+
+    @Override
+    public @Nullable CompoundTag tag() {
+        CompoundTag compoundTag = new CompoundTag();
+        compoundTag.putInt("res", this.sampleResolution);
+        return compoundTag;
     }
 }

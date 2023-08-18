@@ -31,12 +31,15 @@ public abstract class TileLayer {
         tileLayers.add(new TileLayerRegistryEntry("structures", 1, StructuresLayer::new, null));
         return tileLayers;
     });
+    protected int sampleResolution;
 
 
     public TileLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
+        this.sampleResolution = sampleResolution;
     }
 
-    public TileLayer(int size, Path imagePath, Path dataPath) throws Exception {
+    public TileLayer(int size, Path imagePath, Path dataPath, int sampleResolution) throws Exception {
+        this.sampleResolution = sampleResolution;
     }
 
     @Nullable
@@ -57,6 +60,16 @@ public abstract class TileLayer {
 
     public boolean usesLod() {
         return true;
+    }
+
+    public int sampleRes() {
+        return this.sampleResolution;
+    }
+
+    public void close() {
+        if (this.image() != null) {
+            this.image().close();
+        }
     }
 
     public static NativeImage makeNativeImageFromColorData(int[][] data) {
@@ -87,7 +100,7 @@ public abstract class TileLayer {
     }
 
     public interface DiskFactory {
-        TileLayer fromDisk(int size,  Path imagePath, Path dataPath) throws Exception;
+        TileLayer fromDisk(int size,  Path imagePath, Path dataPath, int sampleResolution) throws Exception;
     }
 
     @FunctionalInterface

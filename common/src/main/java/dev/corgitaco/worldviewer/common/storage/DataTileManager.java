@@ -39,7 +39,7 @@ import java.util.concurrent.ExecutorService;
 
 public class DataTileManager {
 
-    private static final ExecutorService SAVE_THREAD = RenderTileManager.createExecutor(1);
+    private static final ExecutorService SAVE_THREAD = RenderTileManager.createExecutor(1, "Worker-Data-Tile-Saver-IO");
 
     private final ConcurrentHashMap<Long, DataTile> dataTiles = new ConcurrentHashMap<>();
     private final Path saveDir;

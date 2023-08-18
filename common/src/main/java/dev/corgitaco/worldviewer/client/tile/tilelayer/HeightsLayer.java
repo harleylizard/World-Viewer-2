@@ -27,8 +27,6 @@ import java.util.List;
 
 public class HeightsLayer extends TileLayer {
 
-    private final int sampleResolution;
-
     @Nullable
     private final NativeImage image;
 
@@ -37,8 +35,6 @@ public class HeightsLayer extends TileLayer {
 
     public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         super(tileManager, y, worldX, worldZ, size, sampleResolution, screen, sampledChunks);
-        this.sampleResolution = sampleResolution;
-
 
         int sampledSize = size / sampleResolution;
         NativeImage colorData = new NativeImage(sampledSize, sampledSize, true);
@@ -64,11 +60,14 @@ public class HeightsLayer extends TileLayer {
         this.heightsData = data;
     }
 
-    public HeightsLayer(int size, Path imagePath, Path dataPath) throws Exception {
-        super(size, imagePath, dataPath);
+    public HeightsLayer(int size, Path imagePath, Path dataPath, int sampleResolution) throws Exception {
+        super(size, imagePath, dataPath, sampleResolution);
         File dataPathFile = dataPath.toFile();
         File imagePathFile = imagePath.toFile();
         if (dataPathFile.exists() && imagePathFile.exists()) {
+            while (!imagePathFile.canRead() || !dataPathFile.canRead()) {
+                Thread.sleep(1);
+            }
             try {
                 CompoundTag compoundTag = NbtIo.read(dataPath.toFile());
                 this.heightsData = compoundTag.getIntArray("heights");

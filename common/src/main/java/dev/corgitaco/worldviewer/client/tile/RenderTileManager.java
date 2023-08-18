@@ -14,6 +14,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,7 +28,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RenderTileManager {
-    private ExecutorService executorService = createExecutor();
+    private ExecutorService executorService = createExecutor("Screen-Tile-Generator");
 
     private final Long2ObjectLinkedOpenHashMap<CompletableFuture<SingleScreenTileLayer>>[] trackedTileLayerFutures = Util.make(new Long2ObjectLinkedOpenHashMap[TileLayer.FACTORY_REGISTRY.size()], maps -> {
         for (int i = 0; i < maps.length; i++) {
@@ -408,7 +409,7 @@ public class RenderTileManager {
 
     public void onScroll() {
         this.executorService.shutdownNow();
-        this.executorService = createExecutor();
+        this.executorService = createExecutor("Screen-Tile-Generator-IO");
         for (int trackedTileLayerFutureIdx = 0; trackedTileLayerFutureIdx < this.trackedTileLayerFutures.length; trackedTileLayerFutureIdx++) {
             this.trackedTileLayerFutures[trackedTileLayerFutureIdx].clear();
             this.loaded[trackedTileLayerFutureIdx].clear();
@@ -416,17 +417,20 @@ public class RenderTileManager {
         }
     }
 
-    public static ExecutorService createExecutor() {
-        return createExecutor(Mth.clamp((Runtime.getRuntime().availableProcessors() - 1) / 2, 1, 25));
+    public static ExecutorService createExecutor(String name) {
+        return createExecutor(Mth.clamp((Runtime.getRuntime().availableProcessors() - 1) / 2, 1, 25), name);
     }
 
-    public static ExecutorService createExecutor(int processors) {
+    public static ExecutorService createExecutor(int processors, String name) {
+        MutableInt count = new MutableInt(1);
         return Executors.newFixedThreadPool(processors, new ThreadFactory() {
             private final ThreadFactory backing = Executors.defaultThreadFactory();
 
             @Override
             public Thread newThread(@NotNull Runnable r) {
                 var thread = backing.newThread(r);
+
+                thread.setName(name + "-" + count.getAndIncrement());
                 thread.setDaemon(true);
                 return thread;
             }
