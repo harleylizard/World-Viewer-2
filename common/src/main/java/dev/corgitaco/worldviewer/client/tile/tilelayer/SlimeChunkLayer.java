@@ -122,6 +122,10 @@ public class SlimeChunkLayer extends TileLayer {
 
     @Override
     public @Nullable CompoundTag tag() {
+        if (slimeChunkData == null) {
+            return null;
+        }
+
         CompoundTag compoundTag = new CompoundTag();
         byte[] slimeChunks = new byte[slimeChunkData.length];
 

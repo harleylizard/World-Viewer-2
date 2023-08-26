@@ -53,10 +53,11 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
 
         this.maxTileWorldX = minTileWorldX + (size);
         this.maxTileWorldZ = minTileWorldZ + (size);
+        String levelName = tileManager.serverLevel().getServer().getWorldData().getLevelName();
         this.size = size;
 
-        Path imagePath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(name).resolve("image").resolve("p." + worldScreenv2.shiftingManager.blockToTile(minTileWorldX) + "-" + worldScreenv2.shiftingManager.blockToTile(minTileWorldZ) + "_s." + size + ".png");
-        Path dataPath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(name).resolve("data").resolve("p." + worldScreenv2.shiftingManager.blockToTile(minTileWorldX) + "-" + worldScreenv2.shiftingManager.blockToTile(minTileWorldZ) + "_s." + size + ".dat");
+        Path imagePath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(levelName).resolve(name).resolve("image").resolve("p." + worldScreenv2.shiftingManager.blockToTile(minTileWorldX) + "-" + worldScreenv2.shiftingManager.blockToTile(minTileWorldZ) + "_s." + size + ".png");
+        Path dataPath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(levelName).resolve(name).resolve("data").resolve("p." + worldScreenv2.shiftingManager.blockToTile(minTileWorldX) + "-" + worldScreenv2.shiftingManager.blockToTile(minTileWorldZ) + "_s." + size + ".dat");
         TileLayer tileLayer1 = null;
 
         if (lastResolution != null) {
