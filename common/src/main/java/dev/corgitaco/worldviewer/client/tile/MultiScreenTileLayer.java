@@ -1,6 +1,7 @@
 package dev.corgitaco.worldviewer.client.tile;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.corgitaco.worldviewer.client.CloseCheck;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import net.minecraft.client.gui.GuiGraphics;
@@ -61,7 +62,13 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
                     }
                 }
 
-                delegate.closeAll();
+                CloseCheck closeCheck = (CloseCheck)(Object) delegate.image();
+                if(closeCheck.canClose()) {
+                    delegate.closeAll();
+                } else {
+                    delegate.releaseDynamicTextureID();
+                    closeCheck.setShouldClose(true);
+                }
             }
         }
         this.nativeImage = newImage;
@@ -145,5 +152,25 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
     @Override
     public void closeNativeImage() {
         this.nativeImage.close();
+    }
+
+    @Override
+    public boolean canClose() {
+        return ((CloseCheck)(Object)this.nativeImage).canClose();
+    }
+
+    @Override
+    public void setCanClose(boolean canClose) {
+        ((CloseCheck)(Object)this.nativeImage).setCanClose(canClose);
+    }
+
+    @Override
+    public boolean shouldClose() {
+        return ((CloseCheck)(Object)this.nativeImage).shouldClose();
+    }
+
+    @Override
+    public void setShouldClose(boolean shouldClose) {
+        ((CloseCheck)(Object)this.nativeImage).setShouldClose(shouldClose);
     }
 }

@@ -3,9 +3,6 @@ package dev.corgitaco.worldviewer.client.tile;
 import dev.corgitaco.worldviewer.util.LongPackingUtil;
 import net.minecraft.core.BlockPos;
 
-import static dev.corgitaco.worldviewer.util.LongPackingUtil.getTileX;
-import static dev.corgitaco.worldviewer.util.LongPackingUtil.getTileZ;
-
 public class TileCoordinateShiftingManager {
 
     private final int shift;

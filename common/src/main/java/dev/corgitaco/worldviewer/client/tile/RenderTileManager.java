@@ -1,23 +1,34 @@
 package dev.corgitaco.worldviewer.client.tile;
 
+import com.google.common.io.ByteArrayDataOutput;
+import com.google.common.io.ByteStreams;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
-import corgitaco.corgilib.platform.ModPlatform;
+import dev.corgitaco.worldviewer.client.CloseCheck;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
+import dev.corgitaco.worldviewer.mixin.NativeImageAccessor;
+import dev.corgitaco.worldviewer.platform.ModPlatform;
 import dev.corgitaco.worldviewer.util.LongPackingUtil;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.*;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -29,6 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RenderTileManager {
     private ExecutorService executorService = createExecutor("Screen-Tile-Generator");
+    private static final ExecutorService FILE_SAVING_EXECUTOR_SERVICE = RenderTileManager.createExecutor(2, "Worker-TileSaver-IO");
 
     private final Long2ObjectLinkedOpenHashMap<CompletableFuture<SingleScreenTileLayer>>[] trackedTileLayerFutures = Util.make(new Long2ObjectLinkedOpenHashMap[TileLayer.FACTORY_REGISTRY.size()], maps -> {
         for (int i = 0; i < maps.length; i++) {
@@ -63,7 +75,7 @@ public class RenderTileManager {
     public RenderTileManager(WorldScreenv2 worldScreenv2, ServerLevel level, BlockPos origin) {
         this.worldScreenv2 = worldScreenv2;
         this.origin = origin;
-        dataTileManager = new DataTileManager(ModPlatform.PLATFORM.configDir().resolve(String.valueOf(level.getSeed())), level.getChunkSource().getGenerator(), level.getChunkSource().getGenerator().getBiomeSource(), level, level.getSeed());
+        dataTileManager = new DataTileManager(ModPlatform.INSTANCE.configPath().resolve(String.valueOf(level.getSeed())), level.getChunkSource().getGenerator(), level.getChunkSource().getGenerator().getBiomeSource(), level, level.getSeed());
         long originTile = worldScreenv2.shiftingManager.tileKey(origin);
         loadTiles(worldScreenv2, originTile);
     }
@@ -177,7 +189,12 @@ public class RenderTileManager {
                 try {
                     SingleScreenTileLayer now = future.getNow(null);
                     if (now != null) {
-                        now.closeAll();
+                        if (now.canClose()) {
+                            now.closeAll();
+                        } else {
+                            now.releaseDynamicTextureID();
+                            now.setShouldClose(true);
+                        }
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -206,8 +223,12 @@ public class RenderTileManager {
                         SingleScreenTileLayer previous = loaded[trackedTileLayerFutureIdx].put(tilePos, singleScreenTileLayer);
                         this.toRender[trackedTileLayerFutureIdx].computeIfAbsent(1, key1 -> new Long2ObjectOpenHashMap<>()).put(tilePos, singleScreenTileLayer);
                         if (previous != null && previous != singleScreenTileLayer) {
-                            previous.closeAll();
-                            ;
+                            if (previous.canClose()) {
+                                previous.closeAll();
+                            } else {
+                                previous.releaseDynamicTextureID();
+                                previous.setShouldClose(true);
+                            }
                         }
                     }
                 });
@@ -217,14 +238,12 @@ public class RenderTileManager {
     }
 
     private void scaleUpTiles(int trackedTileLayerFutureIdx, List<Runnable> toRun) {
-
         Int2ObjectOpenHashMap<LongSet> uploaded = new Int2ObjectOpenHashMap<>();
         this.toRender[trackedTileLayerFutureIdx].int2ObjectEntrySet().fastForEach((entry) -> {
             int currentScale = entry.getIntKey();
             Long2ObjectOpenHashMap<ScreenTileLayer> tiles = entry.getValue();
 
             int newScale = currentScale << 1;
-
 
             tiles.long2ObjectEntrySet().fastForEach(screenTileEntry -> {
                 long tilePos = screenTileEntry.getLongKey();
@@ -332,13 +351,123 @@ public class RenderTileManager {
     private void submitTileFuture(WorldScreenv2 worldScreenv2, int tileSize, long tilePos, int sampleResolution, @Nullable SingleScreenTileLayer lastResolution, int layerIdx) {
         int finalidx = layerIdx;
         trackedTileLayerFutures[layerIdx].computeIfAbsent(tilePos, key -> CompletableFuture.supplyAsync(() -> {
-            var x = worldScreenv2.shiftingManager.getWorldXFromTileKey(tilePos);
-            var z = worldScreenv2.shiftingManager.getWorldZFromTileKey(tilePos);
+            var worldMinTileX = worldScreenv2.shiftingManager.getWorldXFromTileKey(tilePos);
+            var worldMinTileZ = worldScreenv2.shiftingManager.getWorldZFromTileKey(tilePos);
 
-            SingleScreenTileLayer tile = new SingleScreenTileLayer(this.dataTileManager, TileLayer.FACTORY_REGISTRY.get(finalidx).name(), TileLayer.FACTORY_REGISTRY.get(finalidx).generationFactory(), TileLayer.FACTORY_REGISTRY.get(finalidx).diskFactory(), 63, x, z, tileSize, sampleResolution, worldScreenv2, lastResolution);
+            String levelName = this.dataTileManager.serverLevel().getServer().getWorldData().getLevelName();
+            String name = TileLayer.FACTORY_REGISTRY.get(finalidx).name();
+            TileLayer.GenerationFactory generationFactory = TileLayer.FACTORY_REGISTRY.get(finalidx).generationFactory();
+
+
+            Path imagePath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(levelName).resolve(name).resolve("image").resolve("p." + worldScreenv2.shiftingManager.blockToTile(worldMinTileX) + "-" + worldScreenv2.shiftingManager.blockToTile(worldMinTileZ) + "_s." + tileSize + ".png");
+            Path dataPath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(levelName).resolve(name).resolve("data").resolve("p." + worldScreenv2.shiftingManager.blockToTile(worldMinTileX) + "-" + worldScreenv2.shiftingManager.blockToTile(worldMinTileZ) + "_s." + tileSize + ".dat");
+            LongSet sampledChunks = new LongOpenHashSet();
+            TileLayer.DiskFactory diskFactory = TileLayer.FACTORY_REGISTRY.get(finalidx).diskFactory();
+
+            TileLayer tileLayer = getTileLayer(worldScreenv2, tileSize, sampleResolution, lastResolution, diskFactory, imagePath, dataPath, generationFactory, worldMinTileX, worldMinTileZ, sampledChunks);
+
+            SingleScreenTileLayer tile = new SingleScreenTileLayer(tileLayer, worldMinTileX, worldMinTileZ, tileSize);
             changesDetected[finalidx].set(true);
             return tile;
         }, executorService));
+    }
+
+    private TileLayer getTileLayer(WorldScreenv2 worldScreenv2, int tileSize, int sampleResolution, @Nullable SingleScreenTileLayer lastResolution, TileLayer.DiskFactory diskFactory, Path imagePath, Path dataPath, TileLayer.GenerationFactory generationFactory, int x, int z, LongSet sampledChunks) {
+        TileLayer tileLayer;
+        if (lastResolution != null && !lastResolution.tileLayer().usesLod()) {
+            tileLayer = lastResolution.tileLayer();
+        } else {
+            tileLayer = readTileLayerFromDisk(tileSize, sampleResolution, diskFactory, imagePath, dataPath);
+
+            boolean nullTileLayer = tileLayer == null;
+
+            if (nullTileLayer) {
+                tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, worldScreenv2, dataPath, imagePath, sampledChunks);
+            } else {
+                boolean tileLayerComplete = tileLayer.isComplete();
+                boolean resolutionsDontMatch = tileLayer.sampleRes() != worldScreenv2.sampleResolution;
+                boolean usesLod = tileLayer.usesLod();
+                if (!tileLayerComplete || (usesLod && resolutionsDontMatch)) {
+                    tileLayer.close();
+                    tileLayer = generateTile(generationFactory, 63, x, z, tileSize, tileLayer.sampleRes(), worldScreenv2, dataPath, imagePath, sampledChunks);
+                }
+            }
+        }
+        return tileLayer;
+    }
+
+    private static TileLayer readTileLayerFromDisk(int tileSize, int sampleResolution, @Nullable TileLayer.DiskFactory diskFactory, Path imagePath, Path dataPath) {
+        TileLayer tileLayer = null;
+        if (diskFactory != null) {
+            try {
+                TileLayer fromDisk = diskFactory.fromDisk(tileSize, imagePath, dataPath, sampleResolution);
+                tileLayer = fromDisk;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return tileLayer;
+    }
+
+    private TileLayer generateTile(TileLayer.GenerationFactory generationFactory, int scrollY, int minTileWorldX, int minTileWorldZ, int size, int sampleRes, WorldScreenv2 worldScreenv2, Path dataPath, Path imagePath, LongSet sampledChunks) {
+        TileLayer tileLayer1 = generationFactory.make(this.dataTileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, worldScreenv2, sampledChunks);
+        CompoundTag tag = tileLayer1.tag();
+        if (tag != null) {
+
+            FILE_SAVING_EXECUTOR_SERVICE.submit(() -> {
+                try {
+                    ByteArrayDataOutput byteArrayDataOutput = ByteStreams.newDataOutput();
+                    NbtIo.write(tag, byteArrayDataOutput);
+                    File dataPathFile = dataPath.toFile();
+                    if (dataPathFile.exists()) {
+                        while (!dataPathFile.canWrite()) {
+                            Thread.sleep(1);
+                        }
+                    } else {
+                        Path parent = dataPath.getParent();
+                        if (!parent.toFile().exists()) {
+                            Files.createDirectories(parent);
+                        }
+                    }
+                    Files.write(dataPath, byteArrayDataOutput.toByteArray());
+                } catch (IOException | InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        NativeImage image = tileLayer1.image();
+        if (image != null) {
+            if (((NativeImageAccessor) (Object) image).wvGetPixels() != 0L) {
+                ((CloseCheck) (Object) image).setCanClose(false);
+                FILE_SAVING_EXECUTOR_SERVICE.submit(() -> {
+                    try {
+                        byte[] imageByteArray = image.asByteArray();
+                        File imagePathFile = imagePath.toFile();
+                        if (imagePathFile.exists()) {
+                            while (!imagePathFile.canWrite()) {
+                                Thread.sleep(1);
+                            }
+                        } else {
+                            Path parent = imagePath.getParent();
+                            if (!parent.toFile().exists()) {
+                                Files.createDirectories(parent);
+                            }
+                        }
+
+                        Files.write(imagePath, imageByteArray);
+                        ((CloseCheck) (Object) image).setCanClose(true);
+
+                        if (((CloseCheck) (Object) image).shouldClose()) {
+                            image.close();
+                        }
+                    } catch (IOException | InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+        }
+        return tileLayer1;
     }
 
     public void cull(WorldScreenv2 worldScreenv2) {
@@ -372,7 +501,12 @@ public class RenderTileManager {
                     int maxTileWorldX = tile.getMaxTileWorldX();
                     int maxTileWorldZ = tile.getMaxTileWorldZ();
                     if (!worldScreenv2.worldViewArea.intersects(minTileWorldX, minTileWorldZ, maxTileWorldX, maxTileWorldZ)) {
-                        tile.closeAll();
+                        if (tile.canClose()) {
+                            tile.closeAll();
+                        } else {
+                            tile.releaseDynamicTextureID();
+                            tile.setShouldClose(true);
+                        }
                         longs.add(tilePos);
                     }
                 });
@@ -386,7 +520,12 @@ public class RenderTileManager {
                 tiles.forEach(key -> {
                     ScreenTileLayer remove = longScreenTileMap.remove(key);
                     if (remove != null) {
-                        remove.closeAll();
+                        if (remove.canClose()) {
+                            remove.closeAll();
+                        } else {
+                            remove.releaseDynamicTextureID();
+                            remove.setShouldClose(true);
+                        }
                     }
                 });
 
