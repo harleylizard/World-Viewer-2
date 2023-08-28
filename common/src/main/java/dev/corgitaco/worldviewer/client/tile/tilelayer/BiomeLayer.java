@@ -53,6 +53,12 @@ public class BiomeLayer extends TileLayer {
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
         for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
             for (int sampleZ = 0; sampleZ < sampledSize; sampleZ++) {
+                if (Thread.currentThread().isInterrupted()) {
+                    this.biomesData = null;
+                    this.image = null;
+                    image.close();
+                    return;
+                }
                 int worldX = tileWorldX + (sampleX * sampleResolution);
                 int worldZ = tileWorldZ + (sampleZ * sampleResolution);
                 worldPos.set(worldX, y, worldZ);

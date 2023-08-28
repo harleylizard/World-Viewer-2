@@ -5,6 +5,8 @@ import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.FastColor;
@@ -39,6 +41,11 @@ public class NoiseCaveLayer extends TileLayer {
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
         for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
             for (int sampleZ = 0; sampleZ < sampledSize; sampleZ++) {
+                if (Thread.currentThread().isInterrupted()) {
+                    this.image = null;
+                    colorData.close();
+                    return;
+                }
                 worldPos.set(tileWorldX + (sampleX * sampleResolution), 0, tileWorldZ + (sampleZ * sampleResolution));
 
                 sampledChunks.add(ChunkPos.asLong(worldPos));
@@ -78,12 +85,15 @@ public class NoiseCaveLayer extends TileLayer {
                 Thread.sleep(1);
             }
             try {
+                CompoundTag compoundTag = NbtIo.read(dataPath.toFile());
+                this.sampleResolution = compoundTag.getInt("res");
                 this.image = NativeImage.read(Files.readAllBytes(imagePath));
             } catch (IOException e) {
                 throw e;
             }
         } else {
             this.image = null;
+            this.sampleResolution = Integer.MIN_VALUE;
         }
     }
 
@@ -98,7 +108,15 @@ public class NoiseCaveLayer extends TileLayer {
     }
 
     @Override
+    @Nullable
+    public  CompoundTag tag() {
+        CompoundTag compoundTag = new CompoundTag();
+        compoundTag.putInt("res", this.sampleResolution);
+        return compoundTag;
+    }
+
+    @Override
     public boolean isComplete() {
-        return this.image != null;
+        return this.image != null && this.sampleResolution > 0;
     }
 }

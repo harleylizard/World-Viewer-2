@@ -5,6 +5,7 @@ import dev.corgitaco.worldviewer.client.tile.RenderTileManager;
 import dev.corgitaco.worldviewer.common.WorldViewer;
 import dev.corgitaco.worldviewer.mixin.IOWorkerAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import net.daporkchop.lib.primitive.map.concurrent.LongObjConcurrentHashMap;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.RegistryAccess;
@@ -41,7 +42,7 @@ public class DataTileManager {
 
     private static final ExecutorService SAVE_THREAD = RenderTileManager.createExecutor(1, "Worker-Data-Tile-Saver-IO");
 
-    private final ConcurrentHashMap<Long, DataTile> dataTiles = new ConcurrentHashMap<>();
+    private final LongObjConcurrentHashMap<DataTile> dataTiles = new LongObjConcurrentHashMap<>();
     private final Path saveDir;
     private final ChunkGenerator generator;
     private final BiomeSource source;
@@ -222,12 +223,11 @@ public class DataTileManager {
     }
 
     public void saveAllTiles(boolean closeWorker) {
-        for (Map.Entry<Long, DataTile> data : this.dataTiles.entrySet()) {
-            DataTile value = data.getValue();
+        this.dataTiles.forEach((pos, value) -> {
             if (value.isNeedsSaving()) {
                 save(value);
             }
-        }
+        });
         // TODO: This is probably wrong, but we need to NOT block render thread when closing/saving all chunks bc it freezes the game.
         CompletableFuture.runAsync(() -> {
             ioWorker.synchronize(true).join();

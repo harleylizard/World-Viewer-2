@@ -47,6 +47,12 @@ public class SlimeChunkLayer extends TileLayer {
                         data[x + z * dataSize] = true;
                         for (int xMove = 0; xMove < 16; xMove++) {
                             for (int zMove = 0; zMove < 16; zMove++) {
+                                if (Thread.currentThread().isInterrupted()) {
+                                    this.slimeChunkData = null;
+                                    this.image = null;
+                                    nativeImage.close();
+                                    return;
+                                }
                                 if (xMove <= 1 || xMove >= 14 || zMove <= 1 || zMove >= 14) {
                                     int dataX = SectionPos.sectionToBlockCoord(x) + xMove;
                                     int dataZ = SectionPos.sectionToBlockCoord(z) + zMove;

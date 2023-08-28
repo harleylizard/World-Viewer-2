@@ -43,6 +43,13 @@ public class HeightsLayer extends TileLayer {
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
         for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
             for (int sampleZ = 0; sampleZ < sampledSize; sampleZ++) {
+                if (Thread.currentThread().isInterrupted()) {
+                    this.heightsData = null;
+                    this.image = null;
+                    colorData.close();
+                    return;
+                }
+
                 worldPos.set(worldX + (sampleX * sampleResolution), 0, worldZ + (sampleZ * sampleResolution));
 
                 sampledChunks.add(ChunkPos.asLong(worldPos));

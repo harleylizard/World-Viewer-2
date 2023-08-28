@@ -33,6 +33,11 @@ public class TopBlockMapLayer extends TileLayer {
             BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
             for (int chunkX = 0; chunkX < SectionPos.blockToSectionCoord(size); chunkX++) {
                 for (int chunkZ = 0; chunkZ < SectionPos.blockToSectionCoord(size); chunkZ++) {
+                    if (Thread.currentThread().isInterrupted()) {
+                        this.image = null;
+                        nativeImage.close();
+                        return;
+                    }
                     LevelChunk chunk = Minecraft.getInstance().level.getChunkSource().getChunkNow(SectionPos.blockToSectionCoord(tileWorldX) + chunkX, SectionPos.blockToSectionCoord(tileWorldZ) + chunkZ);
                     if (chunk != null) {
                         for (int x = 0; x < 16; x++) {

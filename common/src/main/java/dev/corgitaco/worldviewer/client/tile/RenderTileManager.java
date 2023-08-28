@@ -368,6 +368,8 @@ public class RenderTileManager {
 
             SingleScreenTileLayer tile = new SingleScreenTileLayer(tileLayer, worldMinTileX, worldMinTileZ, tileSize);
             changesDetected[finalidx].set(true);
+
+            sampledChunks.forEach(this.dataTileManager::unloadTile);
             return tile;
         }, executorService));
     }
@@ -384,12 +386,16 @@ public class RenderTileManager {
             if (nullTileLayer) {
                 tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, worldScreenv2, dataPath, imagePath, sampledChunks);
             } else {
-                boolean tileLayerComplete = tileLayer.isComplete();
-                boolean resolutionsDontMatch = tileLayer.sampleRes() != worldScreenv2.sampleResolution;
-                boolean usesLod = tileLayer.usesLod();
-                if (!tileLayerComplete || (usesLod && resolutionsDontMatch)) {
+                if (!tileLayer.isComplete()) {
                     tileLayer.close();
-                    tileLayer = generateTile(generationFactory, 63, x, z, tileSize, tileLayer.sampleRes(), worldScreenv2, dataPath, imagePath, sampledChunks);
+                    tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, worldScreenv2, dataPath, imagePath, sampledChunks);
+                } else {
+                    boolean resolutionsDontMatch = tileLayer.sampleRes() != worldScreenv2.sampleResolution;
+                    boolean usesLod = tileLayer.usesLod();
+                    if (usesLod && resolutionsDontMatch) {
+                        tileLayer.close();
+                        tileLayer = generateTile(generationFactory, 63, x, z, tileSize, tileLayer.sampleRes() >> 1, worldScreenv2, dataPath, imagePath, sampledChunks);
+                    }
                 }
             }
         }
@@ -410,6 +416,9 @@ public class RenderTileManager {
     }
 
     private TileLayer generateTile(TileLayer.GenerationFactory generationFactory, int scrollY, int minTileWorldX, int minTileWorldZ, int size, int sampleRes, WorldScreenv2 worldScreenv2, Path dataPath, Path imagePath, LongSet sampledChunks) {
+        if (sampleRes < 1) {
+            throw new IllegalArgumentException("Sample resolution must at least 1 to generate a tile layer.");
+        }
         TileLayer tileLayer1 = generationFactory.make(this.dataTileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, worldScreenv2, sampledChunks);
         CompoundTag tag = tileLayer1.tag();
         if (tag != null) {

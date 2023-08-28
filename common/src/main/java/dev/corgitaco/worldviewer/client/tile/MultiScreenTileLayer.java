@@ -58,7 +58,12 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
                     for (int pixelZ = 0; pixelZ < nativeImage.getWidth(); pixelZ++) {
                         int pixelRGBA = nativeImage.getPixelRGBA(pixelX, pixelZ);
 
-                        newImage.setPixelRGBA(pixelX + offsetX, pixelZ + offsetZ, pixelRGBA);
+                        try {
+                            newImage.setPixelRGBA(pixelX + offsetX, pixelZ + offsetZ, pixelRGBA);
+
+                        } catch (Exception e) {
+                            String s = "";
+                        }
                     }
                 }
 

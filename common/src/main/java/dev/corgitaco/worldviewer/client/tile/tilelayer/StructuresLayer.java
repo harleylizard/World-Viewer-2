@@ -21,7 +21,7 @@ import java.util.Map;
 
 public class StructuresLayer extends TileLayer {
 
-    private final Map<Holder<Structure>, LongSet> positionsForStructure = new Reference2ObjectOpenHashMap<>();
+    private final Map<Holder<Structure>, LongSet> positionsForStructure;
     private final WorldScreenv2 screen;
 
     public StructuresLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet loadedChunks) {
@@ -29,13 +29,19 @@ public class StructuresLayer extends TileLayer {
         this.screen = screen;
 
         if (size >= 256) {
+            this.positionsForStructure = null;
             return;
         }
-
+        Map<Holder<Structure>, LongSet> positionsForStructure =  new Reference2ObjectOpenHashMap<>();
         for (int x = 0; x < SectionPos.blockToSectionCoord(size); x++) {
             for (int z = 0; z < SectionPos.blockToSectionCoord(size); z++) {
                 int chunkX = SectionPos.blockToSectionCoord(tileWorldX) + x;
                 int chunkZ = SectionPos.blockToSectionCoord(tileWorldZ) + z;
+                if (Thread.currentThread().isInterrupted()) {
+                    this.positionsForStructure = null;
+                    return;
+                }
+
                 long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
                 loadedChunks.add(chunkKey);
                 for (Holder<Structure> structure : tileManager.getStructures(chunkX, chunkZ)) {
@@ -43,6 +49,7 @@ public class StructuresLayer extends TileLayer {
                 }
             }
         }
+        this.positionsForStructure = positionsForStructure;
     }
 
     @Override
