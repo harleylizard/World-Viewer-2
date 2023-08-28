@@ -349,25 +349,24 @@ public class RenderTileManager {
     }
 
     private void submitTileFuture(WorldScreenv2 worldScreenv2, int tileSize, long tilePos, int sampleResolution, @Nullable SingleScreenTileLayer lastResolution, int layerIdx) {
-        int finalidx = layerIdx;
         trackedTileLayerFutures[layerIdx].computeIfAbsent(tilePos, key -> CompletableFuture.supplyAsync(() -> {
             var worldMinTileX = worldScreenv2.shiftingManager.getWorldXFromTileKey(tilePos);
             var worldMinTileZ = worldScreenv2.shiftingManager.getWorldZFromTileKey(tilePos);
 
             String levelName = this.dataTileManager.serverLevel().getServer().getWorldData().getLevelName();
-            String name = TileLayer.FACTORY_REGISTRY.get(finalidx).name();
-            TileLayer.GenerationFactory generationFactory = TileLayer.FACTORY_REGISTRY.get(finalidx).generationFactory();
+            String name = TileLayer.FACTORY_REGISTRY.get(layerIdx).name();
+            TileLayer.GenerationFactory generationFactory = TileLayer.FACTORY_REGISTRY.get(layerIdx).generationFactory();
 
 
             Path imagePath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(levelName).resolve(name).resolve("image").resolve("p." + worldScreenv2.shiftingManager.blockToTile(worldMinTileX) + "-" + worldScreenv2.shiftingManager.blockToTile(worldMinTileZ) + "_s." + tileSize + ".png");
             Path dataPath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(levelName).resolve(name).resolve("data").resolve("p." + worldScreenv2.shiftingManager.blockToTile(worldMinTileX) + "-" + worldScreenv2.shiftingManager.blockToTile(worldMinTileZ) + "_s." + tileSize + ".dat");
             LongSet sampledChunks = new LongOpenHashSet();
-            TileLayer.DiskFactory diskFactory = TileLayer.FACTORY_REGISTRY.get(finalidx).diskFactory();
+            TileLayer.DiskFactory diskFactory = TileLayer.FACTORY_REGISTRY.get(layerIdx).diskFactory();
 
             TileLayer tileLayer = getTileLayer(worldScreenv2, tileSize, sampleResolution, lastResolution, diskFactory, imagePath, dataPath, generationFactory, worldMinTileX, worldMinTileZ, sampledChunks);
 
             SingleScreenTileLayer tile = new SingleScreenTileLayer(tileLayer, worldMinTileX, worldMinTileZ, tileSize);
-            changesDetected[finalidx].set(true);
+            changesDetected[layerIdx].set(true);
 
             sampledChunks.forEach(this.dataTileManager::unloadTile);
             return tile;
