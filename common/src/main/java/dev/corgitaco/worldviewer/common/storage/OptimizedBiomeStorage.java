@@ -16,6 +16,7 @@ import java.util.Arrays;
 public class OptimizedBiomeStorage {
 
     public final int[] values;
+    private final int size;
 
     private Holder<Biome>[] lookUp;
 
@@ -26,15 +27,18 @@ public class OptimizedBiomeStorage {
 
         this.lookUp = tag.getList("lookup", CompoundTag.TAG_STRING).stream().map(tag1 -> (StringTag) tag1).map(StringTag::getAsString).map(ResourceLocation::new)
                 .map(location -> ResourceKey.create(Registries.BIOME, location)).map(biomeRegistry::getHolderOrThrow).toArray(Holder[]::new);
+
+        this.size = (int) Math.sqrt(this.values.length);
     }
 
-    public OptimizedBiomeStorage(int[] values, Holder<Biome>[] lookUp) {
+    public OptimizedBiomeStorage(int[] values, Holder<Biome>[] lookUp, int size) {
         this.values = values;
         this.lookUp = lookUp;
+        this.size = size;
     }
 
     public OptimizedBiomeStorage(int size) {
-        this(new int[size * size], new Holder[0]);
+        this(new int[size * size], new Holder[0], size);
         Arrays.fill(values, -1);
     }
 
@@ -92,7 +96,7 @@ public class OptimizedBiomeStorage {
     }
 
     private int getIndex(int x, int z) {
-        return x + z * ((int) Math.sqrt(this.values.length - 1));
+        return x + z * (this.size);
     }
 
     @FunctionalInterface
