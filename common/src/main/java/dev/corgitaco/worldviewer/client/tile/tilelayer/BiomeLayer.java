@@ -103,6 +103,9 @@ public class BiomeLayer extends TileLayer {
                 this.biomesData = new OptimizedBiomeStorage(compoundTag.getCompound("biomes"), Minecraft.getInstance().level.registryAccess().registryOrThrow(Registries.BIOME));
                 this.sampleResolution = compoundTag.getInt("res");
                 this.image = NativeImage.read(Files.readAllBytes(imagePath));
+                if (this.image.getWidth() != (size / this.sampleResolution)) {
+                    throw new IllegalArgumentException("Improper image width.");
+                }
             } catch (IOException e) {
                 throw e;
             }

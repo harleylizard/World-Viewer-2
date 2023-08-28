@@ -41,6 +41,7 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
         int width = firstDelegate.image().getWidth() * delegates[0].length;
         int height = firstDelegate.image().getHeight() * delegates[0].length;
 
+        verifyDelegatesSimilarity(delegates, firstDelegate);
         NativeImage newImage = new NativeImage(width, height, false);
 
         for (int x = 0; x < delegates.length; x++) {
@@ -57,18 +58,12 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
                 for (int pixelX = 0; pixelX < nativeImage.getWidth(); pixelX++) {
                     for (int pixelZ = 0; pixelZ < nativeImage.getWidth(); pixelZ++) {
                         int pixelRGBA = nativeImage.getPixelRGBA(pixelX, pixelZ);
-
-                        try {
-                            newImage.setPixelRGBA(pixelX + offsetX, pixelZ + offsetZ, pixelRGBA);
-
-                        } catch (Exception e) {
-                            String s = "";
-                        }
+                        newImage.setPixelRGBA(pixelX + offsetX, pixelZ + offsetZ, pixelRGBA);
                     }
                 }
 
-                CloseCheck closeCheck = (CloseCheck)(Object) delegate.image();
-                if(closeCheck.canClose()) {
+                CloseCheck closeCheck = (CloseCheck) (Object) delegate.image();
+                if (closeCheck.canClose()) {
                     delegate.closeAll();
                 } else {
                     delegate.releaseDynamicTextureID();
@@ -79,6 +74,45 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
         this.nativeImage = newImage;
     }
 
+    private static void verifyDelegatesSimilarity(ScreenTileLayer[][] delegates, ScreenTileLayer firstDelegate) {
+        for (int x = 0; x < delegates.length; x++) {
+            for (int z = 0; z < delegates[x].length; z++) {
+                ScreenTileLayer delegate = delegates[x][z];
+
+                int currentDelegateWidth = delegate.image().getWidth();
+                int firstDelegateWidth = firstDelegate.image().getWidth();
+                if (currentDelegateWidth != firstDelegateWidth) {
+                    throw new IllegalArgumentException("Delegate widths do not match! Should be %s but found %s at delegate [%s, %s]".formatted(firstDelegateWidth, currentDelegateWidth, x, z));
+                }
+
+                int currentDelegateHeight = delegate.image().getHeight();
+                int firstDelegateHeight = firstDelegate.image().getHeight();
+                if (currentDelegateHeight != firstDelegateHeight) {
+                    throw new IllegalArgumentException("Delegate heights do not match! Should be %s but found %s at delegate [%s, %s]".formatted(firstDelegateHeight, currentDelegateHeight, x, z));
+                }
+
+                Class<? extends ScreenTileLayer> firstDelegateClass = firstDelegate.getClass();
+                Class<? extends ScreenTileLayer> currentDelegateClass = delegate.getClass();
+                if (firstDelegateClass != currentDelegateClass) {
+                    throw new IllegalArgumentException("Delegate classes do not match! Should be %s but found %s at delegate [%s, %s]".formatted(firstDelegateClass.getName(), currentDelegateClass.getName(), x, z));
+                } else {
+                    if (firstDelegate instanceof SingleScreenTileLayer firstSingleScreenTileLayer) {
+
+                        TileLayer firstDelegateTileLayer = firstSingleScreenTileLayer.tileLayer();
+                        if (delegate instanceof SingleScreenTileLayer delegateSingleScreenTileLayer) {
+
+                            Class<? extends TileLayer> firstDelegateTileLayerClass = firstDelegateTileLayer.getClass();
+                            Class<? extends TileLayer> currentDelegateTileLayerClass = delegateSingleScreenTileLayer.tileLayer().getClass();
+                            if (currentDelegateTileLayerClass != firstDelegateTileLayerClass) {
+                                throw new IllegalArgumentException("Delegate layer types do not match! Should be %s but found %s at delegate [%s, %s]".formatted(firstDelegateTileLayerClass.getName(), currentDelegateTileLayerClass.getName(), x, z));
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     @Override
     public int getMinTileWorldX() {
@@ -161,21 +195,21 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
 
     @Override
     public boolean canClose() {
-        return ((CloseCheck)(Object)this.nativeImage).canClose();
+        return ((CloseCheck) (Object) this.nativeImage).canClose();
     }
 
     @Override
     public void setCanClose(boolean canClose) {
-        ((CloseCheck)(Object)this.nativeImage).setCanClose(canClose);
+        ((CloseCheck) (Object) this.nativeImage).setCanClose(canClose);
     }
 
     @Override
     public boolean shouldClose() {
-        return ((CloseCheck)(Object)this.nativeImage).shouldClose();
+        return ((CloseCheck) (Object) this.nativeImage).shouldClose();
     }
 
     @Override
     public void setShouldClose(boolean shouldClose) {
-        ((CloseCheck)(Object)this.nativeImage).setShouldClose(shouldClose);
+        ((CloseCheck) (Object) this.nativeImage).setShouldClose(shouldClose);
     }
 }

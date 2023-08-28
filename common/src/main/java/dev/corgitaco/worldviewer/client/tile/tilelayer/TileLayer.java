@@ -67,6 +67,10 @@ public abstract class TileLayer {
         return this.sampleResolution;
     }
 
+    public void setSampleResolution(int sampleResolution) {
+        this.sampleResolution = sampleResolution;
+    }
+
     public void close() {
         if (this.image() != null) {
             this.image().close();

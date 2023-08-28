@@ -80,6 +80,9 @@ public class HeightsLayer extends TileLayer {
                 this.heightsData = compoundTag.getIntArray("heights");
                 this.sampleResolution = compoundTag.getInt("res");
                 this.image = NativeImage.read(Files.readAllBytes(imagePath));
+                if (this.image.getWidth() != (size / this.sampleResolution)) {
+                    throw new IllegalArgumentException("Improper image width.");
+                }
             } catch (IOException e) {
                 throw e;
             }

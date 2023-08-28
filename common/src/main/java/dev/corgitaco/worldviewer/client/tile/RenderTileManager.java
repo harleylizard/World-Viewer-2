@@ -82,15 +82,13 @@ public class RenderTileManager {
 
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks, WorldScreenv2 worldScreenv2) {
         for (int toRenderIDX = 0; toRenderIDX < this.toRender.length; toRenderIDX++) {
-            int finalToRenderIDX = toRenderIDX;
-            this.toRender[toRenderIDX].forEach((scale, tiles) -> {
-                renderTiles(guiGraphics, worldScreenv2.opacities.getOrDefault(TileLayer.FACTORY_REGISTRY.get(finalToRenderIDX).name(), 1F), this.worldScreenv2, tiles.values());
-            });
+            String name = TileLayer.FACTORY_REGISTRY.get(toRenderIDX).name();
+            this.toRender[toRenderIDX].forEach((scale, tiles) -> renderTiles(guiGraphics, worldScreenv2.opacities.getOrDefault(name, 1F), this.worldScreenv2, tiles.values()));
         }
 
         for (int toRenderIDX = 0; toRenderIDX < this.loaded.length; toRenderIDX++) {
-            int finalToRenderIDX = toRenderIDX;
-            renderTilesAfter(guiGraphics, worldScreenv2.opacities.getOrDefault(TileLayer.FACTORY_REGISTRY.get(finalToRenderIDX).name(), 1F), this.worldScreenv2, this.loaded[toRenderIDX].values());
+            String name = TileLayer.FACTORY_REGISTRY.get(toRenderIDX).name();
+            renderTilesAfter(guiGraphics, worldScreenv2.opacities.getOrDefault(name, 1F), this.worldScreenv2, this.loaded[toRenderIDX].values());
         }
     }
 
@@ -179,10 +177,10 @@ public class RenderTileManager {
         }
     }
 
-    private void processFutures(int trackedTileLayerFutureIdx, List<Runnable> toRun) {
+    private void processFutures(final int trackedTileLayerFutureIdx, List<Runnable> toRun) {
         LongSet toRemove = new LongOpenHashSet();
-
-        trackedTileLayerFutures[trackedTileLayerFutureIdx].long2ObjectEntrySet().fastForEach(entry -> {
+        int finalidx = trackedTileLayerFutureIdx;
+        trackedTileLayerFutures[finalidx].long2ObjectEntrySet().fastForEach(entry -> {
             long tilePos = entry.getLongKey();
             CompletableFuture<SingleScreenTileLayer> future = entry.getValue();
             if (future.isCompletedExceptionally()) {
@@ -213,16 +211,16 @@ public class RenderTileManager {
                 toRemove.add(tilePos);
             } else {
                 toRun.add(() -> {
-                    SingleScreenTileLayer singleScreenTileLayer = future.getNow(null);
-                    if (singleScreenTileLayer != null) {
-                        int newSampleRes = singleScreenTileLayer.getSampleRes() >> 1;
+                    SingleScreenTileLayer lastResolution = future.getNow(null);
+                    if (lastResolution != null) {
+                        int newSampleRes = lastResolution.getSampleRes() >> 1;
                         if (newSampleRes >= worldScreenv2.sampleResolution) {
-                            submitTileFuture(worldScreenv2, singleScreenTileLayer.getSize(), tilePos, newSampleRes, singleScreenTileLayer, trackedTileLayerFutureIdx);
+                            submitTileFuture(worldScreenv2, lastResolution.getSize(), tilePos, newSampleRes, lastResolution, finalidx);
                         }
 
-                        SingleScreenTileLayer previous = loaded[trackedTileLayerFutureIdx].put(tilePos, singleScreenTileLayer);
-                        this.toRender[trackedTileLayerFutureIdx].computeIfAbsent(1, key1 -> new Long2ObjectOpenHashMap<>()).put(tilePos, singleScreenTileLayer);
-                        if (previous != null && previous != singleScreenTileLayer) {
+                        SingleScreenTileLayer previous = loaded[finalidx].put(tilePos, lastResolution);
+                        this.toRender[finalidx].computeIfAbsent(1, key1 -> new Long2ObjectOpenHashMap<>()).put(tilePos, lastResolution);
+                        if (previous != null && previous != lastResolution) {
                             if (previous.canClose()) {
                                 previous.closeAll();
                             } else {
@@ -234,10 +232,10 @@ public class RenderTileManager {
                 });
             }
         });
-        toRemove.forEach(k -> this.trackedTileLayerFutures[trackedTileLayerFutureIdx].remove(k));
+        toRemove.forEach(k -> this.trackedTileLayerFutures[finalidx].remove(k));
     }
 
-    private void scaleUpTiles(int trackedTileLayerFutureIdx, List<Runnable> toRun) {
+    private void scaleUpTiles(final int trackedTileLayerFutureIdx, List<Runnable> toRun) {
         Int2ObjectOpenHashMap<LongSet> uploaded = new Int2ObjectOpenHashMap<>();
         this.toRender[trackedTileLayerFutureIdx].int2ObjectEntrySet().fastForEach((entry) -> {
             int currentScale = entry.getIntKey();
@@ -348,7 +346,7 @@ public class RenderTileManager {
         }
     }
 
-    private void submitTileFuture(WorldScreenv2 worldScreenv2, int tileSize, long tilePos, int sampleResolution, @Nullable SingleScreenTileLayer lastResolution, int layerIdx) {
+    private void submitTileFuture(WorldScreenv2 worldScreenv2, int tileSize, long tilePos, int sampleResolution, @Nullable SingleScreenTileLayer lastResolution, final int layerIdx) {
         trackedTileLayerFutures[layerIdx].computeIfAbsent(tilePos, key -> CompletableFuture.supplyAsync(() -> {
             var worldMinTileX = worldScreenv2.shiftingManager.getWorldXFromTileKey(tilePos);
             var worldMinTileZ = worldScreenv2.shiftingManager.getWorldZFromTileKey(tilePos);
@@ -375,28 +373,38 @@ public class RenderTileManager {
 
     private TileLayer getTileLayer(WorldScreenv2 worldScreenv2, int tileSize, int sampleResolution, @Nullable SingleScreenTileLayer lastResolution, TileLayer.DiskFactory diskFactory, Path imagePath, Path dataPath, TileLayer.GenerationFactory generationFactory, int x, int z, LongSet sampledChunks) {
         TileLayer tileLayer;
-        if (lastResolution != null && !lastResolution.tileLayer().usesLod()) {
-            tileLayer = lastResolution.tileLayer();
+        if (lastResolution != null) {
+            TileLayer lastResTileLayer = lastResolution.tileLayer();
+            if (!lastResTileLayer.usesLod()) {
+                lastResTileLayer.setSampleResolution(sampleResolution);
+                return lastResTileLayer;
+            }
+
+            tileLayer = lastResTileLayer;
         } else {
             tileLayer = readTileLayerFromDisk(tileSize, sampleResolution, diskFactory, imagePath, dataPath);
+            if (tileLayer != null && tileLayer.isComplete()) {
+                return tileLayer;
+            }
+        }
 
-            boolean nullTileLayer = tileLayer == null;
+        boolean nullTileLayer = tileLayer == null;
 
-            if (nullTileLayer) {
+        if (nullTileLayer) {
+            tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, worldScreenv2, dataPath, imagePath, sampledChunks);
+        } else {
+            if (!tileLayer.isComplete()) {
+                tileLayer.close();
                 tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, worldScreenv2, dataPath, imagePath, sampledChunks);
             } else {
-                if (!tileLayer.isComplete()) {
+                boolean resolutionsDontMatch = tileLayer.sampleRes() != worldScreenv2.sampleResolution;
+                boolean usesLod = tileLayer.usesLod();
+                if (usesLod && resolutionsDontMatch) {
                     tileLayer.close();
-                    tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, worldScreenv2, dataPath, imagePath, sampledChunks);
-                } else {
-                    boolean resolutionsDontMatch = tileLayer.sampleRes() != worldScreenv2.sampleResolution;
-                    boolean usesLod = tileLayer.usesLod();
-                    if (usesLod && resolutionsDontMatch) {
-                        tileLayer.close();
-                        tileLayer = generateTile(generationFactory, 63, x, z, tileSize, tileLayer.sampleRes() >> 1, worldScreenv2, dataPath, imagePath, sampledChunks);
-                    }
+                    tileLayer = generateTile(generationFactory, 63, x, z, tileSize, tileLayer.sampleRes() >> 1, worldScreenv2, dataPath, imagePath, sampledChunks);
                 }
             }
+
         }
         return tileLayer;
     }
@@ -420,7 +428,7 @@ public class RenderTileManager {
         }
         TileLayer tileLayer1 = generationFactory.make(this.dataTileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, worldScreenv2, sampledChunks);
         CompoundTag tag = tileLayer1.tag();
-        if (tag != null) {
+        if (tag != null && tileLayer1.isComplete()) {
 
             FILE_SAVING_EXECUTOR_SERVICE.submit(() -> {
                 try {

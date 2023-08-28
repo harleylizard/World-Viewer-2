@@ -69,6 +69,9 @@ public class NoiseCaveLayer extends TileLayer {
                 if (foundCaveBlocks > 2) {
                     int grayScale = getGrayScale(((float) foundCaveBlocks) / ((float) searchRange), dataTileManager.serverLevel());
                     colorData.setPixelRGBA(sampleX, sampleZ, grayScale);
+                } else {
+                    colorData.setPixelRGBA(sampleX, sampleZ, FastColor.ABGR32.color(1, 0, 0, 0));
+
                 }
             }
         }
@@ -88,6 +91,9 @@ public class NoiseCaveLayer extends TileLayer {
                 CompoundTag compoundTag = NbtIo.read(dataPath.toFile());
                 this.sampleResolution = compoundTag.getInt("res");
                 this.image = NativeImage.read(Files.readAllBytes(imagePath));
+                if (this.image.getWidth() != (size / this.sampleResolution)) {
+                    throw new IllegalArgumentException("Improper image width.");
+                }
             } catch (IOException e) {
                 throw e;
             }
@@ -109,7 +115,7 @@ public class NoiseCaveLayer extends TileLayer {
 
     @Override
     @Nullable
-    public  CompoundTag tag() {
+    public CompoundTag tag() {
         CompoundTag compoundTag = new CompoundTag();
         compoundTag.putInt("res", this.sampleResolution);
         return compoundTag;
