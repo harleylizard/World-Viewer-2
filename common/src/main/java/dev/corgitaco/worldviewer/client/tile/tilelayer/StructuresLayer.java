@@ -69,17 +69,20 @@ public class StructuresLayer extends TileLayer {
 
     @Override
     public @Nullable List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
-        StringBuilder structures = new StringBuilder();
-        this.positionsForStructure.forEach((configuredStructureFeatureHolder, longs) -> {
-            long mouseChunk = ChunkPos.asLong(SectionPos.blockToSectionCoord(mouseWorldX), SectionPos.blockToSectionCoord(mouseWorldZ));
-            if (longs.contains(mouseChunk)) {
-                if (!structures.isEmpty()) {
-                    structures.append(", ");
+        if (this.positionsForStructure != null) {
+            StringBuilder structures = new StringBuilder();
+            this.positionsForStructure.forEach((configuredStructureFeatureHolder, longs) -> {
+                long mouseChunk = ChunkPos.asLong(SectionPos.blockToSectionCoord(mouseWorldX), SectionPos.blockToSectionCoord(mouseWorldZ));
+                if (longs.contains(mouseChunk)) {
+                    if (!structures.isEmpty()) {
+                        structures.append(", ");
+                    }
+                    structures.append(configuredStructureFeatureHolder.unwrapKey().orElseThrow().location().toString());
                 }
-                structures.append(configuredStructureFeatureHolder.unwrapKey().orElseThrow().location().toString());
-            }
-        });
-        return Collections.singletonList(Component.literal("Structure(s): %s".formatted(structures.toString())));
+            });
+            return Collections.singletonList(Component.literal("Structure(s): %s".formatted(structures.toString())));
+        }
+        return null;
     }
 
     @Override
