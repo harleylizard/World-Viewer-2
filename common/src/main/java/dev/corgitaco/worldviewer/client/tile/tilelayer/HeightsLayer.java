@@ -4,7 +4,6 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.WVRenderType;
-import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
@@ -22,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -33,12 +33,27 @@ public class HeightsLayer extends TileLayer {
     @Nullable
     private final int[] heightsData;
 
-    public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, LongSet sampledChunks) {
-        super(tileManager, y, worldX, worldZ, size, sampleResolution, sampledChunks);
+    public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable HeightsLayer lowerResolution) {
+        super(tileManager, y, worldX, worldZ, size, sampleResolution, sampledChunks, lowerResolution);
 
         int sampledSize = size / sampleResolution;
         NativeImage colorData = ClientUtil.createImage(sampledSize, sampledSize, true);
         int[] data = new int[sampledSize * sampledSize];
+        Arrays.fill(data, Integer.MIN_VALUE);
+
+        if (lowerResolution != null) {
+
+            int previousSampledSize = size / lowerResolution.sampleResolution;
+
+            int scale = sampledSize / previousSampledSize;
+
+            for (int sampleX = 0; sampleX < previousSampledSize; sampleX++) {
+                for (int sampleZ = 0; sampleZ < previousSampledSize; sampleZ++) {
+                    int foundCaveBlocks = lowerResolution.heightsData[sampleX + sampleZ * previousSampledSize];
+                    data[(sampleX * scale) + (sampleZ * scale) * sampledSize] = foundCaveBlocks;
+                }
+            }
+        }
 
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
         for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
@@ -49,17 +64,22 @@ public class HeightsLayer extends TileLayer {
                     colorData.close();
                     return;
                 }
-
                 worldPos.set(worldX + (sampleX * sampleResolution), 0, worldZ + (sampleZ * sampleResolution));
 
-                sampledChunks.add(ChunkPos.asLong(worldPos));
+                int idx = sampleX + sampleZ * sampledSize;
+                int previous = data[idx];
+                int worldY;
 
-                y = tileManager.getHeight(Heightmap.Types.OCEAN_FLOOR, worldPos.getX(), worldPos.getZ());
+                if (previous == Integer.MIN_VALUE) {
+                    sampledChunks.add(ChunkPos.asLong(worldPos));
+                    worldY = tileManager.getHeight(Heightmap.Types.OCEAN_FLOOR, worldPos.getX(), worldPos.getZ());
+                } else {
+                    worldY = previous;
+                }
 
-                int grayScale = getGrayScale(y, tileManager.serverLevel());
-
+                int grayScale = getGrayScale(worldY, tileManager.serverLevel());
                 colorData.setPixelRGBA(sampleX, sampleZ, grayScale);
-                data[sampleX + sampleZ * sampledSize] = y;
+                data[idx] = worldY;
             }
         }
 

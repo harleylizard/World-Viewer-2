@@ -44,11 +44,30 @@ public class BiomeLayer extends TileLayer {
     private final OptimizedBiomeStorage biomesData;
 
 
-    public BiomeLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
-        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks);
+    public BiomeLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable BiomeLayer lowerResolution) {
+        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks, lowerResolution);
         int sampledSize = size / sampleResolution;
 
         OptimizedBiomeStorage data = new OptimizedBiomeStorage(sampledSize);
+
+        if (lowerResolution != null) {
+
+            int previousSampledSize = size / lowerResolution.sampleResolution;
+
+            int scale = sampledSize / previousSampledSize;
+            for (int sampleX = 0; sampleX < previousSampledSize; sampleX++) {
+                for (int sampleZ = 0; sampleZ < previousSampledSize; sampleZ++) {
+                    int scaledX = sampleX * scale;
+                    int scaledZ = sampleZ * scale;
+                    @Nullable
+                    Holder<Biome> biomeRaw = lowerResolution.biomesData.getBiomeRaw(sampleX, sampleZ);
+                    if (biomeRaw != null) {
+                        data.getBiome(scaledX, scaledZ, 0, 0, ((worldX1, worldZ1) -> biomeRaw));
+                    }
+                }
+            }
+        }
+
 
         NativeImage image = ClientUtil.createImage(sampledSize, sampledSize, true);
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();

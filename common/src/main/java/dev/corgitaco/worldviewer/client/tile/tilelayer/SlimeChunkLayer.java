@@ -2,7 +2,6 @@ package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.corgitaco.worldviewer.client.ClientUtil;
-import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.SectionPos;
@@ -29,8 +28,8 @@ public class SlimeChunkLayer extends TileLayer {
     @Nullable
     private final boolean[] slimeChunkData;
 
-    public SlimeChunkLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
-        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks);
+    public SlimeChunkLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable SlimeChunkLayer higherResolution) {
+        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks, higherResolution);
         NativeImage nativeImage;
         int dataSize = SectionPos.blockToSectionCoord(size);
 

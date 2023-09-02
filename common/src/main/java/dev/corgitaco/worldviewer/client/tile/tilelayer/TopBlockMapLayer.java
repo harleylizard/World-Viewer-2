@@ -2,7 +2,6 @@ package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.corgitaco.worldviewer.client.ClientUtil;
-import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.client.Minecraft;
@@ -26,8 +25,8 @@ public class TopBlockMapLayer extends TileLayer {
     @Nullable
     private final NativeImage image;
 
-    public TopBlockMapLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
-        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks);
+    public TopBlockMapLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable TopBlockMapLayer higherResolution) {
+        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks, higherResolution);
         if (size <= 128) {
             NativeImage nativeImage = ClientUtil.createImage(size, size, true);
             BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();

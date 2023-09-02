@@ -351,7 +351,7 @@ public class RenderTileManager {
 
             String levelName = this.dataTileManager.serverLevel().getServer().getWorldData().getLevelName();
             String name = TileLayer.FACTORY_REGISTRY.get(layerIdx).name();
-            TileLayer.GenerationFactory generationFactory = TileLayer.FACTORY_REGISTRY.get(layerIdx).generationFactory();
+            TileLayer.GenerationFactory<?> generationFactory = TileLayer.FACTORY_REGISTRY.get(layerIdx).generationFactory();
 
 
             Path imagePath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(levelName).resolve(name).resolve("image").resolve("p." + renderTileContext.currentShiftingManager().blockToTile(worldMinTileX) + "-" + renderTileContext.currentShiftingManager().blockToTile(worldMinTileZ) + "_s." + tileSize + ".png");
@@ -389,17 +389,17 @@ public class RenderTileManager {
         boolean nullTileLayer = tileLayer == null;
 
         if (nullTileLayer) {
-            tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, dataPath, imagePath, sampledChunks);
+            tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, dataPath, imagePath, sampledChunks, tileLayer);
         } else {
             if (!tileLayer.isComplete()) {
                 tileLayer.close();
-                tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, dataPath, imagePath, sampledChunks);
+                tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, dataPath, imagePath, sampledChunks, null);
             } else {
                 boolean resolutionsDontMatch = tileLayer.sampleRes() != renderTileContext.currentShiftingManager().sampleResolution();
                 boolean usesLod = tileLayer.usesLod();
                 if (usesLod && resolutionsDontMatch) {
                     tileLayer.close();
-                    tileLayer = generateTile(generationFactory, 63, x, z, tileSize, tileLayer.sampleRes() >> 1, dataPath, imagePath, sampledChunks);
+                    tileLayer = generateTile(generationFactory, 63, x, z, tileSize, tileLayer.sampleRes() >> 1, dataPath, imagePath, sampledChunks, tileLayer);
                 }
             }
 
@@ -420,11 +420,11 @@ public class RenderTileManager {
         return tileLayer;
     }
 
-    private TileLayer generateTile(TileLayer.GenerationFactory generationFactory, int scrollY, int minTileWorldX, int minTileWorldZ, int size, int sampleRes, Path dataPath, Path imagePath, LongSet sampledChunks) {
+    private <T extends TileLayer> T generateTile(TileLayer.GenerationFactory<T> generationFactory, int scrollY, int minTileWorldX, int minTileWorldZ, int size, int sampleRes, Path dataPath, Path imagePath, LongSet sampledChunks, @Nullable T lowerResolution) {
         if (sampleRes < 1) {
             throw new IllegalArgumentException("Sample resolution must at least 1 to generate a tile layer.");
         }
-        TileLayer tileLayer1 = generationFactory.make(this.dataTileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, sampledChunks);
+        T tileLayer1 = generationFactory.make(this.dataTileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, sampledChunks, lowerResolution);
         CompoundTag tag = tileLayer1.tag();
         if (tag != null && tileLayer1.isComplete()) {
 

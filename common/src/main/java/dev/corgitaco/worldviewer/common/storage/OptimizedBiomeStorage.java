@@ -58,7 +58,7 @@ public class OptimizedBiomeStorage {
 
 
     public Holder<Biome> getBiome(int storageQuartX, int storageQuartZ, int worldX, int worldZ, BiomeGetter getter) {
-        Holder<Biome> biome = getBiome(storageQuartX, storageQuartZ);
+        Holder<Biome> biome = getBiomeRaw(storageQuartX, storageQuartZ);
 
         if (biome == null) {
             Holder<Biome> holder = getter.get(worldX, worldZ);
@@ -87,7 +87,7 @@ public class OptimizedBiomeStorage {
     }
 
     @Nullable
-    private Holder<Biome> getBiome(int x, int z) {
+    public Holder<Biome> getBiomeRaw(int x, int z) {
         int value = values[getIndex(x, z)];
         if (value == -1) {
             return null;

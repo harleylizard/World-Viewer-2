@@ -2,7 +2,6 @@ package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.corgitaco.worldviewer.client.ClientUtil;
-import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
@@ -23,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 public class NoiseCaveLayer extends TileLayer {
 
@@ -30,42 +30,66 @@ public class NoiseCaveLayer extends TileLayer {
     private final NativeImage image;
 
 
-    public NoiseCaveLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
-        super(dataTileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks);
+    private final int[] foundCaveBlocks;
+
+
+    public NoiseCaveLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable NoiseCaveLayer lowerResolution) {
+        super(dataTileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks, lowerResolution);
+        ServerLevel serverLevel = dataTileManager.serverLevel();
+        ChunkGenerator generator = serverLevel.getChunkSource().getGenerator();
+        int minBuildHeight = serverLevel.getMinBuildHeight();
+        int seaLevel = generator.getSeaLevel();
+        int searchRange = seaLevel - minBuildHeight;
+
 
         int sampledSize = size / sampleResolution;
         NativeImage colorData = ClientUtil.createImage(sampledSize, sampledSize, true);
 
-        ServerLevel serverLevel = dataTileManager.serverLevel();
-        ChunkGenerator generator = serverLevel.getChunkSource().getGenerator();
+        int[] data = new int[sampledSize * sampledSize];
+        Arrays.fill(data, -1);
+
+        if (lowerResolution != null) {
+            int previousSampledSize = size / lowerResolution.sampleResolution;
+
+            int scale = sampledSize / previousSampledSize;
+
+            for (int sampleX = 0; sampleX < previousSampledSize; sampleX++) {
+                for (int sampleZ = 0; sampleZ < previousSampledSize; sampleZ++) {
+                    int foundCaveBlocks = lowerResolution.foundCaveBlocks[sampleX + sampleZ * previousSampledSize];
+                    data[(sampleX * scale) + (sampleZ * scale) * sampledSize] = foundCaveBlocks;
+                }
+            }
+        }
 
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
         for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
             for (int sampleZ = 0; sampleZ < sampledSize; sampleZ++) {
                 if (Thread.currentThread().isInterrupted()) {
                     this.image = null;
+                    this.foundCaveBlocks = null;
                     colorData.close();
                     return;
                 }
                 worldPos.set(tileWorldX + (sampleX * sampleResolution), 0, tileWorldZ + (sampleZ * sampleResolution));
 
-                sampledChunks.add(ChunkPos.asLong(worldPos));
-
-                NoiseColumn baseColumn = generator.getBaseColumn(worldPos.getX(), worldPos.getZ(), serverLevel, serverLevel.getChunkSource().randomState());
-
-
                 int foundCaveBlocks = 0;
-                int minBuildHeight = serverLevel.getMinBuildHeight();
-                int seaLevel = generator.getSeaLevel();
-                int searchRange = seaLevel - minBuildHeight;
 
-                for (int index = minBuildHeight; index < seaLevel; index++) {
-                    BlockState block = baseColumn.getBlock(index);
-                    if (block.isAir() || block.getFluidState().is(FluidTags.LAVA)) {
-                        foundCaveBlocks++;
+                int idx = sampleX + sampleZ * sampledSize;
+                int previous = data[idx];
+
+                if (previous == -1) {
+                    sampledChunks.add(ChunkPos.asLong(worldPos));
+                    NoiseColumn baseColumn = generator.getBaseColumn(worldPos.getX(), worldPos.getZ(), serverLevel, serverLevel.getChunkSource().randomState());
+                    for (int index = minBuildHeight; index < seaLevel; index++) {
+                        BlockState block = baseColumn.getBlock(index);
+                        if (block.isAir() || block.getFluidState().is(FluidTags.LAVA)) {
+                            foundCaveBlocks++;
+                        }
                     }
-
+                } else {
+                    foundCaveBlocks = previous;
                 }
+                data[idx] = foundCaveBlocks;
 
                 if (foundCaveBlocks > 2) {
                     int grayScale = getGrayScale(((float) foundCaveBlocks) / ((float) searchRange), dataTileManager.serverLevel());
@@ -76,7 +100,7 @@ public class NoiseCaveLayer extends TileLayer {
                 }
             }
         }
-
+        this.foundCaveBlocks = data;
         this.image = colorData;
     }
 
@@ -91,6 +115,7 @@ public class NoiseCaveLayer extends TileLayer {
             try {
                 CompoundTag compoundTag = NbtIo.read(dataPath.toFile());
                 this.sampleResolution = compoundTag.getInt("res");
+                this.foundCaveBlocks = compoundTag.getIntArray("cave_blocks");
                 this.image = NativeImage.read(Files.readAllBytes(imagePath));
                 if (this.image.getWidth() != (size / this.sampleResolution)) {
                     throw new IllegalArgumentException("Improper image width.");
@@ -100,6 +125,7 @@ public class NoiseCaveLayer extends TileLayer {
             }
         } else {
             this.image = null;
+            this.foundCaveBlocks = null;
             this.sampleResolution = Integer.MIN_VALUE;
         }
     }
@@ -119,6 +145,7 @@ public class NoiseCaveLayer extends TileLayer {
     public CompoundTag tag() {
         CompoundTag compoundTag = new CompoundTag();
         compoundTag.putInt("res", this.sampleResolution);
+        compoundTag.putIntArray("cave_blocks", this.foundCaveBlocks);
         return compoundTag;
     }
 

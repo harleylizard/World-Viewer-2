@@ -24,8 +24,8 @@ public class StructuresLayer extends TileLayer {
     @Nullable
     private final Map<Holder<Structure>, LongSet> positionsForStructure;
 
-    public StructuresLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet loadedChunks) {
-        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, loadedChunks);
+    public StructuresLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet loadedChunks, @Nullable StructuresLayer lowerResolution) {
+        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, loadedChunks, lowerResolution);
 
         if (size >= 256) {
             this.positionsForStructure = null;

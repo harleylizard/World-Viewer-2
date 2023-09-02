@@ -4,7 +4,6 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.WVRenderType;
-import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -23,20 +22,20 @@ import java.util.List;
 public abstract class TileLayer {
 
 
-    public static final List<TileLayerRegistryEntry> FACTORY_REGISTRY = Util.make(() -> {
-        List<TileLayerRegistryEntry> tileLayers = new ArrayList<>();
-        tileLayers.add(new TileLayerRegistryEntry("biomes", 1, BiomeLayer::new, BiomeLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry("map", 1, TopBlockMapLayer::new, TopBlockMapLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry("heights", 0.5F, HeightsLayer::new, HeightsLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry("caves", 1, NoiseCaveLayer::new, NoiseCaveLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry("slime_chunks", 1, SlimeChunkLayer::new, SlimeChunkLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry("structures", 1, StructuresLayer::new, null));
+    public static final List<TileLayerRegistryEntry<?>> FACTORY_REGISTRY = Util.make(() -> {
+        List<TileLayerRegistryEntry<?>> tileLayers = new ArrayList<>();
+        tileLayers.add(new TileLayerRegistryEntry<BiomeLayer>("biomes", 1, BiomeLayer::new, BiomeLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry<TopBlockMapLayer>("map", 1, TopBlockMapLayer::new, TopBlockMapLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry<HeightsLayer>("heights", 0.5F, HeightsLayer::new, HeightsLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry<NoiseCaveLayer>("caves", 1, NoiseCaveLayer::new, NoiseCaveLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry<SlimeChunkLayer>("slime_chunks", 1, SlimeChunkLayer::new, SlimeChunkLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry<StructuresLayer>("structures", 1, StructuresLayer::new, null));
         return tileLayers;
     });
     protected int sampleResolution;
 
 
-    public TileLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
+    public TileLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable TileLayer lowerResolution) {
         this.sampleResolution = sampleResolution;
     }
 
@@ -100,9 +99,8 @@ public abstract class TileLayer {
     public abstract boolean isComplete();
 
     @FunctionalInterface
-    public interface GenerationFactory {
-
-        TileLayer make(DataTileManager tileManager, int scrollWorldY, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledDataChunks);
+    public interface GenerationFactory<T> {
+        T make(DataTileManager tileManager, int scrollWorldY, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledDataChunks, T tileLayer);
     }
 
     public interface DiskFactory {
@@ -115,7 +113,7 @@ public abstract class TileLayer {
         void render(GuiGraphics graphics, int size, int id, float opacity, RenderTileContext renderTileContext);
     }
 
-    public record TileLayerRegistryEntry(String name, float defaultOpacity, GenerationFactory generationFactory, @Nullable DiskFactory diskFactory) {
+    public record TileLayerRegistryEntry<T extends TileLayer>(String name, float defaultOpacity, GenerationFactory<T> generationFactory, @Nullable DiskFactory diskFactory) {
     }
 }
 
