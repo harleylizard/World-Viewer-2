@@ -2,6 +2,7 @@ package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
@@ -49,7 +50,7 @@ public class BiomeLayer extends TileLayer {
 
         OptimizedBiomeStorage data = new OptimizedBiomeStorage(sampledSize);
 
-        NativeImage image = new NativeImage(sampledSize, sampledSize, true);
+        NativeImage image = ClientUtil.createImage(sampledSize, sampledSize, true);
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
         for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
             for (int sampleZ = 0; sampleZ < sampledSize; sampleZ++) {

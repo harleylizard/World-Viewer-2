@@ -37,7 +37,7 @@ public class HeightsLayer extends TileLayer {
         super(tileManager, y, worldX, worldZ, size, sampleResolution, screen, sampledChunks);
 
         int sampledSize = size / sampleResolution;
-        NativeImage colorData = new NativeImage(sampledSize, sampledSize, true);
+        NativeImage colorData = ClientUtil.createImage(sampledSize, sampledSize, true);
         int[] data = new int[sampledSize * sampledSize];
 
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();

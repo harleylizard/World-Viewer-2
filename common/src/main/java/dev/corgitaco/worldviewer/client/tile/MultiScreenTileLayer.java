@@ -1,6 +1,7 @@
 package dev.corgitaco.worldviewer.client.tile;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.CloseCheck;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
@@ -42,7 +43,7 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
         int height = firstDelegate.image().getHeight() * delegates[0].length;
 
         verifyDelegatesSimilarity(delegates, firstDelegate);
-        NativeImage newImage = new NativeImage(width, height, false);
+        NativeImage newImage = ClientUtil.createImage(width, height, false);
 
         for (int x = 0; x < delegates.length; x++) {
             for (int z = 0; z < delegates[x].length; z++) {

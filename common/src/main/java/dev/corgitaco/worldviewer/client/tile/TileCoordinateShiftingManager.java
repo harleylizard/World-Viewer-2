@@ -60,4 +60,13 @@ public class TileCoordinateShiftingManager {
     public int getTileZ(long tileKey) {
         return LongPackingUtil.getTileZ(tileKey);
     }
+
+
+    public int tileSize() {
+        return tileToBlock(1);
+    }
+
+    public int sampleResolution() {
+        return Math.max(1, tileSize() >> 6);
+    }
 }

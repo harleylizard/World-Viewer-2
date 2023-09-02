@@ -78,7 +78,7 @@ public abstract class TileLayer {
     }
 
     public static NativeImage makeNativeImageFromColorData(int[][] data) {
-        NativeImage nativeImage = new NativeImage(data.length, data.length, false);
+        NativeImage nativeImage = ClientUtil.createImage(data.length, data.length, false);
         for (int x = 0; x < data.length; x++) {
             int[] colorRow = data[x];
             for (int y = 0; y < colorRow.length; y++) {

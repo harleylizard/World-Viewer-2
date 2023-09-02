@@ -1,6 +1,7 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -33,7 +34,7 @@ public class NoiseCaveLayer extends TileLayer {
         super(dataTileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, sampledChunks);
 
         int sampledSize = size / sampleResolution;
-        NativeImage colorData = new NativeImage(sampledSize, sampledSize, true);
+        NativeImage colorData = ClientUtil.createImage(sampledSize, sampledSize, true);
 
         ServerLevel serverLevel = dataTileManager.serverLevel();
         ChunkGenerator generator = serverLevel.getChunkSource().getGenerator();

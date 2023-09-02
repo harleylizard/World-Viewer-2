@@ -1,6 +1,7 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -28,8 +29,8 @@ public class TopBlockMapLayer extends TileLayer {
     public TopBlockMapLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, sampledChunks);
         if (size <= 128) {
-            this.sampleResolution = screen.sampleResolution;
-            NativeImage nativeImage = new NativeImage(size, size, true);
+            this.sampleResolution = screen.shiftingManager().sampleResolution();
+            NativeImage nativeImage = ClientUtil.createImage(size, size, true);
             BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
             for (int chunkX = 0; chunkX < SectionPos.blockToSectionCoord(size); chunkX++) {
                 for (int chunkZ = 0; chunkZ < SectionPos.blockToSectionCoord(size); chunkZ++) {
