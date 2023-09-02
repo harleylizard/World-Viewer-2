@@ -2,7 +2,7 @@ package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 
 import com.mojang.blaze3d.platform.NativeImage;
-import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
+import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongArraySet;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -23,11 +23,9 @@ public class StructuresLayer extends TileLayer {
 
     @Nullable
     private final Map<Holder<Structure>, LongSet> positionsForStructure;
-    private final WorldScreenv2 screen;
 
-    public StructuresLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet loadedChunks) {
-        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, loadedChunks);
-        this.screen = screen;
+    public StructuresLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet loadedChunks) {
+        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, loadedChunks);
 
         if (size >= 256) {
             this.positionsForStructure = null;
@@ -54,14 +52,14 @@ public class StructuresLayer extends TileLayer {
     }
 
     @Override
-    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ, WorldScreenv2 screenv2) {
+    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ, RenderTileContext renderTileContext) {
         if (this.positionsForStructure != null) {
             this.positionsForStructure.forEach(((configuredStructureFeatureHolder, longs) -> {
                 for (long structureChunkPos : longs) {
                     int structureWorldX = SectionPos.sectionToBlockCoord(ChunkPos.getX(structureChunkPos)) - tileMinWorldX;
                     int structureWorldZ = SectionPos.sectionToBlockCoord(ChunkPos.getZ(structureChunkPos)) - tileMinWorldZ;
 
-                    this.screen.structureIconRenderer.getStructureRendering().get(configuredStructureFeatureHolder).render(guiGraphics, structureWorldX, structureWorldZ, structureWorldX + 15, structureWorldZ + 15, (float) opacity, this.screen.scale);
+                    renderTileContext.structureIconRenderer().getStructureRendering().get(configuredStructureFeatureHolder).render(guiGraphics, structureWorldX, structureWorldZ, structureWorldX + 15, structureWorldZ + 15, (float) opacity, renderTileContext.scale());
                 }
             }));
         }

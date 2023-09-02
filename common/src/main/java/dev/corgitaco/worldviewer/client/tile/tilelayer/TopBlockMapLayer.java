@@ -26,10 +26,9 @@ public class TopBlockMapLayer extends TileLayer {
     @Nullable
     private final NativeImage image;
 
-    public TopBlockMapLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
-        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, sampledChunks);
+    public TopBlockMapLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
+        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks);
         if (size <= 128) {
-            this.sampleResolution = screen.shiftingManager().sampleResolution();
             NativeImage nativeImage = ClientUtil.createImage(size, size, true);
             BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
             for (int chunkX = 0; chunkX < SectionPos.blockToSectionCoord(size); chunkX++) {

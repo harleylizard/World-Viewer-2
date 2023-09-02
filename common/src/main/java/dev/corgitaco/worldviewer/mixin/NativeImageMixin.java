@@ -9,6 +9,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Path;
 
@@ -17,6 +20,8 @@ public class NativeImageMixin implements CloseCheck {
 
     private boolean canClose = true;
     private boolean shouldClose = false;
+
+    String closedFrom;
 
     @Override
     public boolean canClose() {
@@ -83,6 +88,15 @@ public class NativeImageMixin implements CloseCheck {
     private void isClosing(CallbackInfo ci) {
         if (!canClose) {
             new Throwable().printStackTrace();
+        }
+
+        try {
+            StringWriter out = new StringWriter();
+            new Throwable().printStackTrace(new PrintWriter(out));
+            this.closedFrom = out.toString();
+            out.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }

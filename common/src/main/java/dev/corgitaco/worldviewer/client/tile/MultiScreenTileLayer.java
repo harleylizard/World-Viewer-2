@@ -136,12 +136,12 @@ public class MultiScreenTileLayer implements ScreenTileLayer {
     }
 
     @Override
-    public void renderTile(GuiGraphics guiGraphics, float scale, float opacity, WorldScreenv2 worldScreenv2) {
+    public void renderTile(GuiGraphics guiGraphics, float scale, float opacity, RenderTileContext renderTileContext) {
         if (shouldRender && this.nativeImage != null) {
             if (this.dynamicTexture == null) {
                 this.dynamicTexture = new DynamicTexture(this.nativeImage);
             }
-            renderer.render(guiGraphics, this.size, this.dynamicTexture.getId(), opacity, worldScreenv2);
+            renderer.render(guiGraphics, this.size, this.dynamicTexture.getId(), opacity, renderTileContext);
         }
     }
 

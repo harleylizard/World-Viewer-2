@@ -47,7 +47,7 @@ public class RenderTileManager {
             maps[i] = new Long2ObjectLinkedOpenHashMap();
         }
     });
-    private WorldScreenv2 worldScreenv2;
+    private RenderTileContext renderTileContext;
     private final BlockPos origin;
 
     private final AtomicBoolean[] changesDetected = Util.make(new AtomicBoolean[TileLayer.FACTORY_REGISTRY.size()], maps -> {
@@ -73,73 +73,69 @@ public class RenderTileManager {
 
     public boolean blockGeneration = true;
 
-    public RenderTileManager(WorldScreenv2 worldScreenv2, ServerLevel level, BlockPos origin, TileCoordinateShiftingManager[] shiftingManagers, MutableInt shiftingManagerIdx) {
-        this.worldScreenv2 = worldScreenv2;
+    public RenderTileManager(RenderTileContext renderTileContext, ServerLevel level, BlockPos origin, TileCoordinateShiftingManager[] shiftingManagers, MutableInt shiftingManagerIdx) {
+        this.renderTileContext = renderTileContext;
         this.origin = origin;
         dataTileManager = new DataTileManager(ModPlatform.INSTANCE.configPath().resolve(String.valueOf(level.getSeed())), level.getChunkSource().getGenerator(), level.getChunkSource().getGenerator().getBiomeSource(), level, level.getSeed());
         this.shiftingManagerIdx = shiftingManagerIdx;
-        long originTile = worldScreenv2.shiftingManager().tileKey(origin);
-        loadTiles(worldScreenv2, originTile);
+        long originTile = renderTileContext.currentShiftingManager().tileKey(origin);
+        loadTiles(renderTileContext, originTile);
     }
 
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks, WorldScreenv2 worldScreenv2) {
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         for (int toRenderIDX = 0; toRenderIDX < this.toRender.length; toRenderIDX++) {
             String name = TileLayer.FACTORY_REGISTRY.get(toRenderIDX).name();
-            this.toRender[toRenderIDX].forEach((scale, tiles) -> renderTiles(guiGraphics, worldScreenv2.opacities.getOrDefault(name, 1F), this.worldScreenv2, tiles.values()));
+            this.toRender[toRenderIDX].forEach((scale, tiles) -> renderTiles(guiGraphics, this.renderTileContext.opacities().getOrDefault(name, 1F), this.renderTileContext, tiles.values()));
         }
 
         for (int toRenderIDX = 0; toRenderIDX < this.loaded.length; toRenderIDX++) {
             String name = TileLayer.FACTORY_REGISTRY.get(toRenderIDX).name();
-            renderTilesAfter(guiGraphics, worldScreenv2.opacities.getOrDefault(name, 1F), this.worldScreenv2, this.loaded[toRenderIDX].values());
+            renderTilesAfter(guiGraphics, this.renderTileContext.opacities().getOrDefault(name, 1F), this.renderTileContext, this.loaded[toRenderIDX].values());
         }
     }
 
-    public DataTileManager getDataTileManager() {
-        return dataTileManager;
-    }
-
-    private static void renderTiles(GuiGraphics graphics, float opacity, WorldScreenv2 worldScreenv2, Collection<? extends ScreenTileLayer> renderTiles) {
+    private static void renderTiles(GuiGraphics graphics, float opacity, RenderTileContext renderTileContext, Collection<? extends ScreenTileLayer> renderTiles) {
         PoseStack poseStack = graphics.pose();
         renderTiles.forEach(tileToRender -> {
             if (tileToRender != null) {
-                int localX = (int) worldScreenv2.getLocalXFromWorldX(tileToRender.getMinTileWorldX());
-                int localZ = (int) worldScreenv2.getLocalZFromWorldZ(tileToRender.getMinTileWorldZ());
+                int localX = (int) renderTileContext.localXFromWorldX(tileToRender.getMinTileWorldX());
+                int localZ = (int) renderTileContext.localZFromWorldZ(tileToRender.getMinTileWorldZ());
 
-                int screenTileMinX = (worldScreenv2.getScreenCenterX() + localX);
-                int screenTileMinZ = (worldScreenv2.getScreenCenterZ() + localZ);
+                int screenTileMinX = (renderTileContext.getScreenCenterX() + localX);
+                int screenTileMinZ = (renderTileContext.getScreenCenterZ() + localZ);
 
                 poseStack.pushPose();
                 poseStack.translate(screenTileMinX, screenTileMinZ, 0);
                 poseStack.mulPose(Axis.ZN.rotationDegrees(180));
-                tileToRender.renderTile(graphics, worldScreenv2.scale, opacity, worldScreenv2);
+                tileToRender.renderTile(graphics, renderTileContext.scale(), opacity, renderTileContext);
                 poseStack.popPose();
             }
         });
     }
 
-    private static void renderTilesAfter(GuiGraphics graphics, float opacity, WorldScreenv2 worldScreenv2, Collection<? extends SingleScreenTileLayer> renderTiles) {
+    private static void renderTilesAfter(GuiGraphics graphics, float opacity, RenderTileContext renderTileContext, Collection<? extends SingleScreenTileLayer> renderTiles) {
         PoseStack poseStack = graphics.pose();
         renderTiles.forEach(tileToRender -> {
             if (tileToRender != null) {
-                int localX = (int) worldScreenv2.getLocalXFromWorldX(tileToRender.getMinTileWorldX());
-                int localZ = (int) worldScreenv2.getLocalZFromWorldZ(tileToRender.getMinTileWorldZ());
+                int localX = (int) renderTileContext.localXFromWorldX(tileToRender.getMinTileWorldX());
+                int localZ = (int) renderTileContext.localZFromWorldZ(tileToRender.getMinTileWorldZ());
 
-                int screenTileMinX = (worldScreenv2.getScreenCenterX() + localX);
-                int screenTileMinZ = (worldScreenv2.getScreenCenterZ() + localZ);
+                int screenTileMinX = (renderTileContext.getScreenCenterX() + localX);
+                int screenTileMinZ = (renderTileContext.getScreenCenterZ() + localZ);
 
                 poseStack.pushPose();
                 poseStack.translate(screenTileMinX, screenTileMinZ, 0);
                 poseStack.mulPose(Axis.ZN.rotationDegrees(180));
-                tileToRender.afterTilesRender(graphics, worldScreenv2.scale, opacity, worldScreenv2);
+                tileToRender.afterTilesRender(graphics, renderTileContext.scale(), opacity, renderTileContext);
                 poseStack.popPose();
             }
         });
     }
 
     public void tick() {
-        long originTile = worldScreenv2.shiftingManager().tileKey(this.origin);
+        long originTile = renderTileContext.currentShiftingManager().tileKey(this.origin);
         if (!blockGeneration) {
-            loadTiles(worldScreenv2, originTile);
+            loadTiles(renderTileContext, originTile);
             blockGeneration = true;
         }
 
@@ -206,9 +202,9 @@ public class RenderTileManager {
                 toRemove.add(tilePos);
             }
 
-            int worldX = worldScreenv2.shiftingManager().getWorldXFromTileKey(tilePos);
-            int worldZ = worldScreenv2.shiftingManager().getWorldZFromTileKey(tilePos);
-            if (!worldScreenv2.worldViewArea.intersects(worldX, worldZ, worldX, worldZ) && !future.isCancelled()) {
+            int worldX = renderTileContext.currentShiftingManager().getWorldXFromTileKey(tilePos);
+            int worldZ = renderTileContext.currentShiftingManager().getWorldZFromTileKey(tilePos);
+            if (!renderTileContext.worldViewArea().intersects(worldX, worldZ, worldX, worldZ) && !future.isCancelled()) {
                 future.cancel(true);
                 toRemove.add(tilePos);
             } else {
@@ -216,13 +212,13 @@ public class RenderTileManager {
                     SingleScreenTileLayer lastResolution = future.getNow(null);
                     if (lastResolution != null) {
                         int newSampleRes = lastResolution.getSampleRes() >> 1;
-                        if (newSampleRes >= worldScreenv2.shiftingManager().sampleResolution()) {
-                            submitTileFuture(worldScreenv2, lastResolution.getSize(), tilePos, newSampleRes, lastResolution, finalidx);
+                        if (newSampleRes >= renderTileContext.currentShiftingManager().sampleResolution()) {
+                            submitTileFuture(renderTileContext, lastResolution.getSize(), tilePos, newSampleRes, lastResolution, finalidx);
                         }
 
                         SingleScreenTileLayer previous = loaded[finalidx].put(tilePos, lastResolution);
                         this.toRender[finalidx].computeIfAbsent(1, key1 -> new Long2ObjectOpenHashMap<>()).put(tilePos, lastResolution);
-                        if (previous != null && previous != lastResolution) {
+                        if (previous != null && previous != lastResolution && previous.tileLayer().usesLod()) {
                             if (previous.canClose()) {
                                 previous.closeAll();
                             } else {
@@ -257,8 +253,8 @@ public class RenderTileManager {
                     return;
                 }
 
-                int tileX = worldScreenv2.shiftingManager().getTileX(tilePos);
-                int tileZ = worldScreenv2.shiftingManager().getTileZ(tilePos);
+                int tileX = renderTileContext.currentShiftingManager().getTileX(tilePos);
+                int tileZ = renderTileContext.currentShiftingManager().getTileZ(tilePos);
 
                 int getNextScaleMinTileX = (tileX / newScale) * newScale;
                 int getNextScaleMaxTileX = (getNextScaleMinTileX + newScale);
@@ -291,7 +287,7 @@ public class RenderTileManager {
 
                             ScreenTileLayer offset = this.toRender[trackedTileLayerFutureIdx].get(currentScale).get(tileKey);
 
-                            if (offset != null && offset.sampleResCheck(worldScreenv2.shiftingManager().sampleResolution())) {
+                            if (offset != null && offset.sampleResCheck(renderTileContext.currentShiftingManager().sampleResolution())) {
                                 tilesToRender[tileOffsetX][tileOffsetZ] = offset;
                             } else {
                                 return;
@@ -315,9 +311,9 @@ public class RenderTileManager {
         });
     }
 
-    private void loadTiles(WorldScreenv2 worldScreenv2, long originTile) {
-        int xTileRange = worldScreenv2.getXTileRange();
-        int zTileRange = worldScreenv2.getZTileRange();
+    private void loadTiles(RenderTileContext worldScreenv2, long originTile) {
+        int xTileRange = worldScreenv2.xTileRange();
+        int zTileRange = worldScreenv2.zTileRange();
 
         int slices = 360;
         double sliceSize = Mth.TWO_PI / slices;
@@ -325,22 +321,22 @@ public class RenderTileManager {
         int tileRange = Math.max(xTileRange, zTileRange) + 2;
         for (int tileDistanceFromOrigin = 0; tileDistanceFromOrigin <= tileRange; tileDistanceFromOrigin++) {
 
-            int tileSize = worldScreenv2.shiftingManager().tileSize();
-            int originWorldX = worldScreenv2.shiftingManager().getWorldXFromTileKey(originTile) + (tileSize / 2);
-            int originWorldZ = worldScreenv2.shiftingManager().getWorldZFromTileKey(originTile) + (tileSize / 2);
+            int tileSize = worldScreenv2.currentShiftingManager().tileSize();
+            int originWorldX = worldScreenv2.currentShiftingManager().getWorldXFromTileKey(originTile) + (tileSize / 2);
+            int originWorldZ = worldScreenv2.currentShiftingManager().getWorldZFromTileKey(originTile) + (tileSize / 2);
             double distance = tileSize * tileDistanceFromOrigin;
 
             for (int i = 0; i < slices; i++) {
                 double angle = i * sliceSize;
                 int worldTileX = (int) Math.round(originWorldX + (Math.sin(angle) * distance));
                 int worldTileZ = (int) Math.round(originWorldZ + (Math.cos(angle) * distance));
-                if (worldScreenv2.worldViewArea.intersects(worldTileX, worldTileZ, worldTileX, worldTileZ)) {
-                    long tilePos = LongPackingUtil.tileKey(worldScreenv2.shiftingManager().blockToTile(worldTileX), worldScreenv2.shiftingManager().blockToTile(worldTileZ));
+                if (worldScreenv2.worldViewArea().intersects(worldTileX, worldTileZ, worldTileX, worldTileZ)) {
+                    long tilePos = LongPackingUtil.tileKey(worldScreenv2.currentShiftingManager().blockToTile(worldTileX), worldScreenv2.currentShiftingManager().blockToTile(worldTileZ));
 
                     for (int trackedTileLayerFuture = 0; trackedTileLayerFuture < this.trackedTileLayerFutures.length; trackedTileLayerFuture++) {
                         SingleScreenTileLayer tile = loaded[trackedTileLayerFuture].get(tilePos);
                         if (tile == null) {
-                            submitTileFuture(worldScreenv2, tileSize, tilePos, worldScreenv2.shiftingManager().sampleResolution() << 3, null, trackedTileLayerFuture);
+                            submitTileFuture(worldScreenv2, tileSize, tilePos, worldScreenv2.currentShiftingManager().sampleResolution() << 3, null, trackedTileLayerFuture);
                         }
                     }
                 }
@@ -348,22 +344,22 @@ public class RenderTileManager {
         }
     }
 
-    private void submitTileFuture(WorldScreenv2 worldScreenv2, int tileSize, long tilePos, int sampleResolution, @Nullable SingleScreenTileLayer lastResolution, final int layerIdx) {
+    private void submitTileFuture(RenderTileContext renderTileContext, int tileSize, long tilePos, int sampleResolution, @Nullable SingleScreenTileLayer lastResolution, final int layerIdx) {
         trackedTileLayerFutures[layerIdx].computeIfAbsent(tilePos, key -> CompletableFuture.supplyAsync(() -> {
-            var worldMinTileX = worldScreenv2.shiftingManager().getWorldXFromTileKey(tilePos);
-            var worldMinTileZ = worldScreenv2.shiftingManager().getWorldZFromTileKey(tilePos);
+            var worldMinTileX = renderTileContext.currentShiftingManager().getWorldXFromTileKey(tilePos);
+            var worldMinTileZ = renderTileContext.currentShiftingManager().getWorldZFromTileKey(tilePos);
 
             String levelName = this.dataTileManager.serverLevel().getServer().getWorldData().getLevelName();
             String name = TileLayer.FACTORY_REGISTRY.get(layerIdx).name();
             TileLayer.GenerationFactory generationFactory = TileLayer.FACTORY_REGISTRY.get(layerIdx).generationFactory();
 
 
-            Path imagePath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(levelName).resolve(name).resolve("image").resolve("p." + worldScreenv2.shiftingManager().blockToTile(worldMinTileX) + "-" + worldScreenv2.shiftingManager().blockToTile(worldMinTileZ) + "_s." + tileSize + ".png");
-            Path dataPath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(levelName).resolve(name).resolve("data").resolve("p." + worldScreenv2.shiftingManager().blockToTile(worldMinTileX) + "-" + worldScreenv2.shiftingManager().blockToTile(worldMinTileZ) + "_s." + tileSize + ".dat");
+            Path imagePath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(levelName).resolve(name).resolve("image").resolve("p." + renderTileContext.currentShiftingManager().blockToTile(worldMinTileX) + "-" + renderTileContext.currentShiftingManager().blockToTile(worldMinTileZ) + "_s." + tileSize + ".png");
+            Path dataPath = ModPlatform.INSTANCE.configPath().resolve("client").resolve("map").resolve(levelName).resolve(name).resolve("data").resolve("p." + renderTileContext.currentShiftingManager().blockToTile(worldMinTileX) + "-" + renderTileContext.currentShiftingManager().blockToTile(worldMinTileZ) + "_s." + tileSize + ".dat");
             LongSet sampledChunks = new LongOpenHashSet();
             TileLayer.DiskFactory diskFactory = TileLayer.FACTORY_REGISTRY.get(layerIdx).diskFactory();
 
-            TileLayer tileLayer = getTileLayer(worldScreenv2, tileSize, sampleResolution, lastResolution, diskFactory, imagePath, dataPath, generationFactory, worldMinTileX, worldMinTileZ, sampledChunks);
+            TileLayer tileLayer = getTileLayer(renderTileContext, tileSize, sampleResolution, lastResolution, diskFactory, imagePath, dataPath, generationFactory, worldMinTileX, worldMinTileZ, sampledChunks);
 
             SingleScreenTileLayer tile = new SingleScreenTileLayer(tileLayer, worldMinTileX, worldMinTileZ, tileSize);
             changesDetected[layerIdx].set(true);
@@ -373,7 +369,7 @@ public class RenderTileManager {
         }, executorService));
     }
 
-    private TileLayer getTileLayer(WorldScreenv2 worldScreenv2, int tileSize, int sampleResolution, @Nullable SingleScreenTileLayer lastResolution, TileLayer.DiskFactory diskFactory, Path imagePath, Path dataPath, TileLayer.GenerationFactory generationFactory, int x, int z, LongSet sampledChunks) {
+    private TileLayer getTileLayer(RenderTileContext renderTileContext, int tileSize, int sampleResolution, @Nullable SingleScreenTileLayer lastResolution, TileLayer.DiskFactory diskFactory, Path imagePath, Path dataPath, TileLayer.GenerationFactory generationFactory, int x, int z, LongSet sampledChunks) {
         TileLayer tileLayer;
         if (lastResolution != null) {
             TileLayer lastResTileLayer = lastResolution.tileLayer();
@@ -393,17 +389,17 @@ public class RenderTileManager {
         boolean nullTileLayer = tileLayer == null;
 
         if (nullTileLayer) {
-            tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, worldScreenv2, dataPath, imagePath, sampledChunks);
+            tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, dataPath, imagePath, sampledChunks);
         } else {
             if (!tileLayer.isComplete()) {
                 tileLayer.close();
-                tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, worldScreenv2, dataPath, imagePath, sampledChunks);
+                tileLayer = generateTile(generationFactory, 63, x, z, tileSize, sampleResolution, dataPath, imagePath, sampledChunks);
             } else {
-                boolean resolutionsDontMatch = tileLayer.sampleRes() != worldScreenv2.shiftingManager().sampleResolution();
+                boolean resolutionsDontMatch = tileLayer.sampleRes() != renderTileContext.currentShiftingManager().sampleResolution();
                 boolean usesLod = tileLayer.usesLod();
                 if (usesLod && resolutionsDontMatch) {
                     tileLayer.close();
-                    tileLayer = generateTile(generationFactory, 63, x, z, tileSize, tileLayer.sampleRes() >> 1, worldScreenv2, dataPath, imagePath, sampledChunks);
+                    tileLayer = generateTile(generationFactory, 63, x, z, tileSize, tileLayer.sampleRes() >> 1, dataPath, imagePath, sampledChunks);
                 }
             }
 
@@ -424,11 +420,11 @@ public class RenderTileManager {
         return tileLayer;
     }
 
-    private TileLayer generateTile(TileLayer.GenerationFactory generationFactory, int scrollY, int minTileWorldX, int minTileWorldZ, int size, int sampleRes, WorldScreenv2 worldScreenv2, Path dataPath, Path imagePath, LongSet sampledChunks) {
+    private TileLayer generateTile(TileLayer.GenerationFactory generationFactory, int scrollY, int minTileWorldX, int minTileWorldZ, int size, int sampleRes, Path dataPath, Path imagePath, LongSet sampledChunks) {
         if (sampleRes < 1) {
             throw new IllegalArgumentException("Sample resolution must at least 1 to generate a tile layer.");
         }
-        TileLayer tileLayer1 = generationFactory.make(this.dataTileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, worldScreenv2, sampledChunks);
+        TileLayer tileLayer1 = generationFactory.make(this.dataTileManager, scrollY, minTileWorldX, minTileWorldZ, size, sampleRes, sampledChunks);
         CompoundTag tag = tileLayer1.tag();
         if (tag != null && tileLayer1.isComplete()) {
 

@@ -46,8 +46,8 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
         return this.tileLayer.toolTip(mouseScreenX, mouseScreenY, mouseWorldX, mouseWorldZ, mouseTileLocalX, mouseTileLocalY);
     }
 
-    public void afterTilesRender(GuiGraphics guiGraphics, float scale, float opacity, WorldScreenv2 worldScreenv2) {
-        this.tileLayer.afterTilesRender(guiGraphics, opacity, getMinTileWorldX(), getMinTileWorldZ(), worldScreenv2);
+    public void afterTilesRender(GuiGraphics guiGraphics, float scale, float opacity, RenderTileContext renderTileContext) {
+        this.tileLayer.afterTilesRender(guiGraphics, opacity, getMinTileWorldX(), getMinTileWorldZ(), renderTileContext);
     }
 
     public int getMinTileWorldX() {
@@ -69,12 +69,12 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
     }
 
     @Override
-    public void renderTile(GuiGraphics guiGraphics, float scale, float opacity, WorldScreenv2 worldScreenv2) {
+    public void renderTile(GuiGraphics guiGraphics, float scale, float opacity, RenderTileContext renderTileContext) {
         if (shouldRender && this.tileLayer.image() != null) {
             if (this.dynamicTexture == null) {
                 this.dynamicTexture = new DynamicTexture(this.tileLayer.image());
             }
-            renderer().render(guiGraphics, size, this.dynamicTexture.getId(), opacity, worldScreenv2);
+            renderer().render(guiGraphics, size, this.dynamicTexture.getId(), opacity, renderTileContext);
         }
     }
 

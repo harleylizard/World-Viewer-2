@@ -19,7 +19,7 @@ public interface ScreenTileLayer extends CloseCheck {
 
     int getMaxTileWorldZ();
 
-    void renderTile(GuiGraphics guiGraphics, float scale, float opacity, WorldScreenv2 worldScreenv2);
+    void renderTile(GuiGraphics guiGraphics, float scale, float opacity, RenderTileContext worldScreenv2);
 
     TileLayer.Renderer renderer();
 

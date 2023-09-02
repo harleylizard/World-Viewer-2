@@ -29,14 +29,13 @@ public class SlimeChunkLayer extends TileLayer {
     @Nullable
     private final boolean[] slimeChunkData;
 
-    public SlimeChunkLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
-        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, sampledChunks);
+    public SlimeChunkLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
+        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks);
         NativeImage nativeImage;
         int dataSize = SectionPos.blockToSectionCoord(size);
 
         boolean[] data = new boolean[dataSize * dataSize];
         if (sampleResolution <= 16 && size <= 128) {
-            this.sampleResolution = screen.shiftingManager().sampleResolution();
             nativeImage = ClientUtil.createImage(size, size, true);
             for (int x = 0; x < dataSize; x++) {
                 for (int z = 0; z < dataSize; z++) {

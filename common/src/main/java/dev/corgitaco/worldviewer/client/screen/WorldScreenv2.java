@@ -4,11 +4,13 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.StructureIconRenderer;
+import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.client.tile.RenderTileManager;
 import dev.corgitaco.worldviewer.client.tile.SingleScreenTileLayer;
 import dev.corgitaco.worldviewer.client.tile.TileCoordinateShiftingManager;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2FloatOpenHashMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -39,7 +41,6 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.*;
@@ -49,7 +50,7 @@ import static dev.corgitaco.worldviewer.util.LongPackingUtil.getTileX;
 import static dev.corgitaco.worldviewer.util.LongPackingUtil.getTileZ;
 
 
-public class WorldScreenv2 extends Screen {
+public class WorldScreenv2 extends Screen implements RenderTileContext {
 
     private TileCoordinateShiftingManager[] shiftingManagers;
 
@@ -74,10 +75,9 @@ public class WorldScreenv2 extends Screen {
     private WidgetList highlightBiomes;
 
 
-    @Nullable
-    public ResourceKey<Biome> highlightedBiome = null;
+    private Map<String, Object> data = new HashMap<>();
 
-    public final Map<String, Float> opacities = new HashMap<>();
+    public final Object2FloatOpenHashMap<String> opacities = new Object2FloatOpenHashMap<>();
 
     private long lastClickTime;
 
@@ -91,9 +91,51 @@ public class WorldScreenv2 extends Screen {
             shiftingManagers[i] = new TileCoordinateShiftingManager(shift);
             shift++;
         }
-
     }
 
+    @Override
+    public StructureIconRenderer structureIconRenderer() {
+        return this.structureIconRenderer;
+    }
+
+    @Override
+    public float scale() {
+        return this.scale;
+    }
+
+    public TileCoordinateShiftingManager currentShiftingManager() {
+        return this.shiftingManagers[this.shiftingManagerIdx.intValue()];
+    }
+
+    @Override
+    public Object2FloatOpenHashMap<String> opacities() {
+        return this.opacities;
+    }
+
+    @Override
+    public BlockPos origin() {
+        return this.origin;
+    }
+
+    @Override
+    public int renderWidth() {
+        return this.width;
+    }
+
+    @Override
+    public int renderHeight() {
+        return this.height;
+    }
+
+    @Override
+    public BoundingBox worldViewArea() {
+        return this.worldViewArea;
+    }
+
+    @Override
+    public Map<String, ?> data() {
+        return this.data;
+    }
 
     @Override
     protected void init() {
@@ -131,10 +173,12 @@ public class WorldScreenv2 extends Screen {
             ResourceKey<Biome> biomeResourceKey = possibleBiome.unwrapKey().orElseThrow();
             ResourceLocation location = biomeResourceKey.location();
             widgets.add(new Button(0, 0, biomeButtonWidth, 20, Component.translatable("biome." + location.getNamespace() + "." + location.getPath()), button -> {
+                String highlightedBiomeKey = "highlighted_biome";
+                Object highlightedBiome = data.get(highlightedBiomeKey);
                 if (highlightedBiome == biomeResourceKey) {
-                    highlightedBiome = null;
+                    data.remove(highlightedBiomeKey);
                 } else {
-                    highlightedBiome = biomeResourceKey;
+                    data.put(highlightedBiomeKey, biomeResourceKey);
                 }
             }, key -> Component.empty()));
         });
@@ -183,7 +227,7 @@ public class WorldScreenv2 extends Screen {
         stack.scale(scale, scale, 0);
         guiGraphics.fill(0, 0, (int) (width / scale), (int) (height / scale), FastColor.ARGB32.color(255, 0, 0, 0));
 
-        this.renderTileManager.render(guiGraphics, mouseX, mouseY, partialTicks, this);
+        this.renderTileManager.render(guiGraphics, mouseX, mouseY, partialTicks);
 
         drawGrid(guiGraphics);
 
@@ -199,14 +243,10 @@ public class WorldScreenv2 extends Screen {
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
     }
 
-    public TileCoordinateShiftingManager shiftingManager() {
-        return this.shiftingManagers[this.shiftingManagerIdx.intValue()];
-    }
-
     private void renderToolTip(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         BlockPos mouseWorldPos = getMouseWorldPos(mouseX, mouseY);
 
-        long mouseTileKey = shiftingManager().tileKey(mouseWorldPos);
+        long mouseTileKey = currentShiftingManager().tileKey(mouseWorldPos);
 
         List<Component> toolTip = new ArrayList<>();
 
@@ -257,28 +297,28 @@ public class WorldScreenv2 extends Screen {
     }
 
     private void drawGrid(GuiGraphics guiGraphics) {
-        drawGrid(guiGraphics, new TileCoordinateShiftingManager(this.shiftingManager().getShift() + 2));
+        drawGrid(guiGraphics, new TileCoordinateShiftingManager(this.currentShiftingManager().getShift() + 2));
     }
 
     private void drawGrid(GuiGraphics guiGraphics, TileCoordinateShiftingManager tileCoordinateShiftingManager) {
         PoseStack poseStack = guiGraphics.pose();
         int gridColor = FastColor.ARGB32.color(100, 255, 255, 255);
-        long originTile = this.shiftingManager().tileKey(this.origin);
+        long originTile = this.currentShiftingManager().tileKey(this.origin);
         int lineWidth = (int) Math.ceil(0.75 / scale);
 
-        int tileMinX = tileCoordinateShiftingManager.blockToTile(shiftingManager().tileToBlock(getTileX(originTile) - getXTileRange()));
-        int tileMaxX = tileCoordinateShiftingManager.blockToTile(shiftingManager().tileToBlock(getTileX(originTile) + getXTileRange()));
+        int tileMinX = tileCoordinateShiftingManager.blockToTile(currentShiftingManager().tileToBlock(getTileX(originTile) - xTileRange()));
+        int tileMaxX = tileCoordinateShiftingManager.blockToTile(currentShiftingManager().tileToBlock(getTileX(originTile) + xTileRange()));
 
         for (int tileX = tileMinX; tileX <= tileMaxX; tileX++) {
-            int linePos = (int) (getScreenCenterX() + getLocalXFromWorldX(tileCoordinateShiftingManager.tileToBlock(tileX)));
+            int linePos = (int) (getScreenCenterX() + localXFromWorldX(tileCoordinateShiftingManager.tileToBlock(tileX)));
             guiGraphics.fill(linePos - lineWidth, 0, linePos + lineWidth, (int) (height / scale), gridColor);
         }
 
-        int tileMinZ = tileCoordinateShiftingManager.blockToTile(this.shiftingManager().tileToBlock(getTileZ(originTile) - getZTileRange()));
-        int tileMaxZ = tileCoordinateShiftingManager.blockToTile(this.shiftingManager().tileToBlock(getTileZ(originTile) + getZTileRange()));
+        int tileMinZ = tileCoordinateShiftingManager.blockToTile(this.currentShiftingManager().tileToBlock(getTileZ(originTile) - zTileRange()));
+        int tileMaxZ = tileCoordinateShiftingManager.blockToTile(this.currentShiftingManager().tileToBlock(getTileZ(originTile) + zTileRange()));
 
         for (int tileZ = tileMinZ; tileZ <= tileMaxZ; tileZ++) {
-            int linePos = (int) (getScreenCenterZ() + getLocalZFromWorldZ(tileCoordinateShiftingManager.tileToBlock(tileZ)));
+            int linePos = (int) (getScreenCenterZ() + localZFromWorldZ(tileCoordinateShiftingManager.tileToBlock(tileZ)));
             guiGraphics.fill(0, linePos - lineWidth, (int) (width / scale), linePos + lineWidth, gridColor);
         }
 
@@ -287,8 +327,8 @@ public class WorldScreenv2 extends Screen {
                 int worldX = tileCoordinateShiftingManager.tileToBlock(tileX);
                 int worldZ = tileCoordinateShiftingManager.tileToBlock(tileZ);
 
-                int xScreenPos = (int) (getScreenCenterX() + getLocalXFromWorldX(worldX));
-                int zScreenPos = (int) (getScreenCenterZ() + getLocalZFromWorldZ(worldZ));
+                int xScreenPos = (int) (getScreenCenterX() + localXFromWorldX(worldX));
+                int zScreenPos = (int) (getScreenCenterZ() + localZFromWorldZ(worldZ));
 
                 String formatted = "x%s,z%s".formatted(worldX, worldZ);
                 MutableComponent component = Component.literal(formatted).withStyle(ChatFormatting.BOLD);
@@ -327,9 +367,9 @@ public class WorldScreenv2 extends Screen {
 
             int size = (int) (8 / (scale)) * 3;
 
-            double localXFromWorldX = getLocalXFromWorldX(player.getX());
+            double localXFromWorldX = localXFromWorldX(player.getX());
 
-            double localZFromWorldZ = getLocalZFromWorldZ(player.getZ());
+            double localZFromWorldZ = localZFromWorldZ(player.getZ());
 
             int renderX = (int) ((getScreenCenterX() + localXFromWorldX) - (size / 2F));
             int renderZ = (int) ((getScreenCenterZ() + localZFromWorldZ) - (size / 2F));
@@ -401,12 +441,12 @@ public class WorldScreenv2 extends Screen {
                     this.origin.move(0, (int) delta, 0);
                 }
             } else {
-                TileCoordinateShiftingManager tileCoordinateShiftingManager = this.shiftingManager();
+                TileCoordinateShiftingManager tileCoordinateShiftingManager = this.currentShiftingManager();
                 int prevShift = tileCoordinateShiftingManager.getShift();
 
-                this.shiftingManagerIdx.setValue(Mth.clamp((int)(this.shiftingManagerIdx.intValue() - delta), 0, this.shiftingManagers.length - 1));
+                this.shiftingManagerIdx.setValue(Mth.clamp((int) (this.shiftingManagerIdx.intValue() - delta), 0, this.shiftingManagers.length - 1));
 
-                if (prevShift != this.shiftingManager().getShift()) {
+                if (prevShift != this.currentShiftingManager().getShift()) {
 
                     if (delta > 0) {
                         this.scale = (float) (this.scale + (delta * (this.scale)));
@@ -433,56 +473,20 @@ public class WorldScreenv2 extends Screen {
 
 
     private void setWorldArea() {
-        int xRange = getXTileRange();
-        int zRange = getZTileRange();
+        int xRange = xTileRange();
+        int zRange = zTileRange();
         this.worldViewArea = BoundingBox.fromCorners(
                 new Vec3i(
-                        (int) Math.max(this.level.getWorldBorder().getMinX(), this.origin.getX() - shiftingManager().tileToBlock(xRange) - 1),
+                        (int) Math.max(this.level.getWorldBorder().getMinX(), this.origin.getX() - currentShiftingManager().tileToBlock(xRange) - 1),
                         level.getMinBuildHeight(),
-                        (int) Math.max(this.level.getWorldBorder().getMinZ(), this.origin.getZ() - shiftingManager().tileToBlock(zRange) - 1)
+                        (int) Math.max(this.level.getWorldBorder().getMinZ(), this.origin.getZ() - currentShiftingManager().tileToBlock(zRange) - 1)
                 ),
                 new Vec3i(
-                        (int) Math.min(this.level.getWorldBorder().getMaxX(), this.origin.getX() + shiftingManager().tileToBlock(xRange) + 1),
+                        (int) Math.min(this.level.getWorldBorder().getMaxX(), this.origin.getX() + currentShiftingManager().tileToBlock(xRange) + 1),
                         level.getMaxBuildHeight(),
-                        (int) Math.min(this.level.getWorldBorder().getMaxZ(), this.origin.getZ() + shiftingManager().tileToBlock(zRange) + 1)
+                        (int) Math.min(this.level.getWorldBorder().getMaxZ(), this.origin.getZ() + currentShiftingManager().tileToBlock(zRange) + 1)
                 )
         );
-    }
-
-    public int getXTileRange() {
-        return this.shiftingManager().blockToTile(getScreenCenterX()) + 2;
-    }
-
-    public int getZTileRange() {
-        return this.shiftingManager().blockToTile(getScreenCenterZ()) + 2;
-    }
-
-    public double getLocalXFromWorldX(double worldX) {
-        return this.origin.getX() - worldX;
-    }
-
-    public double getLocalZFromWorldZ(double worldZ) {
-        return this.origin.getZ() - worldZ;
-    }
-
-    public int getScreenCenterX() {
-        return (int) ((this.width / 2) / scale);
-    }
-
-    public int getScreenCenterZ() {
-        return (int) ((this.height / 2) / scale);
-    }
-
-    public long getOriginTile() {
-        return this.shiftingManager().tileKey(this.origin);
-    }
-
-    public int getTileLocalXFromWorldX(int worldX) {
-        return getTileX(getOriginTile()) - this.shiftingManager().blockToTile(worldX);
-    }
-
-    public int getTileLocalZFromWorldZ(int worldZ) {
-        return getTileZ(getOriginTile()) - this.shiftingManager().blockToTile(worldZ);
     }
 
     private static class Slider extends AbstractSliderButton {

@@ -33,8 +33,8 @@ public class HeightsLayer extends TileLayer {
     @Nullable
     private final int[] heightsData;
 
-    public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
-        super(tileManager, y, worldX, worldZ, size, sampleResolution, screen, sampledChunks);
+    public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, LongSet sampledChunks) {
+        super(tileManager, y, worldX, worldZ, size, sampleResolution, sampledChunks);
 
         int sampledSize = size / sampleResolution;
         NativeImage colorData = ClientUtil.createImage(sampledSize, sampledSize, true);
@@ -109,7 +109,7 @@ public class HeightsLayer extends TileLayer {
 
     @Override
     public Renderer renderer() {
-        return (graphics, size1, id, opacity, worldScreenv2) -> {
+        return (graphics, size1, id, opacity, renderTileContext) -> {
             VertexConsumer vertexConsumer = graphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(id, WVRenderType.DST_COLOR_SRC_ALPHA_TRANSPARENCY));
             ClientUtil.blit(vertexConsumer, graphics.pose(), opacity, 0, 0, 0F, 0F, size1, size1, size1, size1);
         };

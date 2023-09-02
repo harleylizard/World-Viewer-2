@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
+import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.Util;
@@ -35,7 +36,7 @@ public abstract class TileLayer {
     protected int sampleResolution;
 
 
-    public TileLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
+    public TileLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
         this.sampleResolution = sampleResolution;
     }
 
@@ -48,7 +49,7 @@ public abstract class TileLayer {
         return Collections.emptyList();
     }
 
-    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ, WorldScreenv2 screenv2) {
+    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ, RenderTileContext renderTileContext) {
     }
 
     @Nullable
@@ -90,7 +91,7 @@ public abstract class TileLayer {
     }
 
     public Renderer renderer() {
-        return (graphics, size1, id, opacity, worldScreenv2) -> {
+        return (graphics, size1, id, opacity, renderTileContext) -> {
             VertexConsumer vertexConsumer = graphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(id, RenderType.NO_TRANSPARENCY));
             ClientUtil.blit(vertexConsumer, graphics.pose(), opacity, 0, 0, 0F, 0F, size1, size1, size1, size1);
         };
@@ -101,7 +102,7 @@ public abstract class TileLayer {
     @FunctionalInterface
     public interface GenerationFactory {
 
-        TileLayer make(DataTileManager tileManager, int scrollWorldY, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledDataChunks);
+        TileLayer make(DataTileManager tileManager, int scrollWorldY, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledDataChunks);
     }
 
     public interface DiskFactory {
@@ -111,7 +112,7 @@ public abstract class TileLayer {
     @FunctionalInterface
     public interface Renderer {
 
-        void render(GuiGraphics graphics, int size, int id, float opacity, WorldScreenv2 screenv2);
+        void render(GuiGraphics graphics, int size, int id, float opacity, RenderTileContext renderTileContext);
     }
 
     public record TileLayerRegistryEntry(String name, float defaultOpacity, GenerationFactory generationFactory, @Nullable DiskFactory diskFactory) {

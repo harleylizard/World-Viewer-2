@@ -30,8 +30,8 @@ public class NoiseCaveLayer extends TileLayer {
     private final NativeImage image;
 
 
-    public NoiseCaveLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
-        super(dataTileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, sampledChunks);
+    public NoiseCaveLayer(DataTileManager dataTileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
+        super(dataTileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks);
 
         int sampledSize = size / sampleResolution;
         NativeImage colorData = ClientUtil.createImage(sampledSize, sampledSize, true);

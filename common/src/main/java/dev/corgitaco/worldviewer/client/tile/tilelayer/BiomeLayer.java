@@ -4,7 +4,6 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.WVRenderType;
-import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import dev.corgitaco.worldviewer.common.storage.OptimizedBiomeStorage;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -34,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class BiomeLayer extends TileLayer {
 
@@ -44,8 +44,8 @@ public class BiomeLayer extends TileLayer {
     private final OptimizedBiomeStorage biomesData;
 
 
-    public BiomeLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, WorldScreenv2 screen, LongSet sampledChunks) {
-        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, screen, sampledChunks);
+    public BiomeLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks) {
+        super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks);
         int sampledSize = size / sampleResolution;
 
         OptimizedBiomeStorage data = new OptimizedBiomeStorage(sampledSize);
@@ -120,11 +120,12 @@ public class BiomeLayer extends TileLayer {
 
     @Override
     public Renderer renderer() {
-        return (graphics, size1, id, opacity, worldScreenv2) -> {
+        return (graphics, size1, id, opacity, renderTileContext) -> {
             Matrix4f matrix = graphics.pose().last().pose();
-            if (worldScreenv2.highlightedBiome != null) {
-                if (FAST_COLORS.containsKey(worldScreenv2.highlightedBiome)) {
-                    int color = FAST_COLORS.getInt(worldScreenv2.highlightedBiome);
+            Map<String, ?> data = renderTileContext.data();
+            if (data.get("highlighted_biome") instanceof ResourceKey biomeResourceKey) {
+                if (FAST_COLORS.containsKey(biomeResourceKey)) {
+                    int color = FAST_COLORS.getInt(biomeResourceKey);
                     VertexConsumer vertexConsumer = graphics.bufferSource().getBuffer(WVRenderType.COLOR_FILTER_WORLD_VIEWER_GUI.apply(id, RenderType.NO_TRANSPARENCY));
                     float a = FastColor.ARGB32.alpha(color) / 255F;
 
@@ -138,8 +139,9 @@ public class BiomeLayer extends TileLayer {
                     vertexConsumer.vertex(matrix, (float) 0, (float) 0, (float) 0).color(1F, 1F, 1F, opacity).uv(0, 0).color(r, g, b, a).endVertex();
                     return;
                 }
+
             }
-            super.renderer().render(graphics, size1, id, opacity, worldScreenv2);
+            super.renderer().render(graphics, size1, id, opacity, renderTileContext);
         };
     }
 
@@ -241,7 +243,7 @@ public class BiomeLayer extends TileLayer {
 
     @Override
     @Nullable
-    public  CompoundTag tag() {
+    public CompoundTag tag() {
         CompoundTag compoundTag = new CompoundTag();
         compoundTag.put("biomes", this.biomesData.save());
         compoundTag.putInt("res", this.sampleResolution);
