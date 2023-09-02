@@ -21,6 +21,7 @@ import java.util.Map;
 
 public class StructuresLayer extends TileLayer {
 
+    @Nullable
     private final Map<Holder<Structure>, LongSet> positionsForStructure;
     private final WorldScreenv2 screen;
 
@@ -54,14 +55,16 @@ public class StructuresLayer extends TileLayer {
 
     @Override
     public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ, WorldScreenv2 screenv2) {
-        this.positionsForStructure.forEach(((configuredStructureFeatureHolder, longs) -> {
-            for (long structureChunkPos : longs) {
-                int structureWorldX = SectionPos.sectionToBlockCoord(ChunkPos.getX(structureChunkPos)) - tileMinWorldX;
-                int structureWorldZ = SectionPos.sectionToBlockCoord(ChunkPos.getZ(structureChunkPos)) - tileMinWorldZ;
+        if (this.positionsForStructure != null) {
+            this.positionsForStructure.forEach(((configuredStructureFeatureHolder, longs) -> {
+                for (long structureChunkPos : longs) {
+                    int structureWorldX = SectionPos.sectionToBlockCoord(ChunkPos.getX(structureChunkPos)) - tileMinWorldX;
+                    int structureWorldZ = SectionPos.sectionToBlockCoord(ChunkPos.getZ(structureChunkPos)) - tileMinWorldZ;
 
-                this.screen.structureIconRenderer.getStructureRendering().get(configuredStructureFeatureHolder).render(guiGraphics, structureWorldX, structureWorldZ, structureWorldX + 15, structureWorldZ + 15, (float) opacity, this.screen.scale);
-            }
-        }));
+                    this.screen.structureIconRenderer.getStructureRendering().get(configuredStructureFeatureHolder).render(guiGraphics, structureWorldX, structureWorldZ, structureWorldX + 15, structureWorldZ + 15, (float) opacity, this.screen.scale);
+                }
+            }));
+        }
     }
 
     @Override
