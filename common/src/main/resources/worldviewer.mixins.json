@@ -16,8 +16,7 @@
     "MixinGameRenderer",
     "MixinLevelRenderer",
     "MixinOptionsScreen",
-    "NativeImageAccessor",
-    "NativeImageMixin"
+    "NativeImageAccessor"
   ],
   "server": [
   ],

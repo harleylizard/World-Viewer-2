@@ -18,6 +18,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import org.jetbrains.annotations.Nullable;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
+import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -27,7 +31,7 @@ import java.util.Arrays;
 public class NoiseCaveLayer extends TileLayer {
 
     @Nullable
-    private final NativeImage image;
+    private final int[] image;
 
 
     private final int[] foundCaveBlocks;
@@ -43,7 +47,8 @@ public class NoiseCaveLayer extends TileLayer {
 
 
         int sampledSize = size / sampleResolution;
-        NativeImage colorData = ClientUtil.createImage(sampledSize, sampledSize, true);
+
+        int[] image = new int[sampledSize * sampledSize];
 
         int[] data = new int[sampledSize * sampledSize];
         Arrays.fill(data, -1);
@@ -67,7 +72,6 @@ public class NoiseCaveLayer extends TileLayer {
                 if (Thread.currentThread().isInterrupted()) {
                     this.image = null;
                     this.foundCaveBlocks = null;
-                    colorData.close();
                     return;
                 }
                 worldPos.set(tileWorldX + (sampleX * sampleResolution), 0, tileWorldZ + (sampleZ * sampleResolution));
@@ -93,15 +97,15 @@ public class NoiseCaveLayer extends TileLayer {
 
                 if (foundCaveBlocks > 2) {
                     int grayScale = getGrayScale(((float) foundCaveBlocks) / ((float) searchRange), dataTileManager.serverLevel());
-                    colorData.setPixelRGBA(sampleX, sampleZ, grayScale);
+                    image[sampleX + sampleZ * sampledSize] = (byte) grayScale;
                 } else {
-                    colorData.setPixelRGBA(sampleX, sampleZ, FastColor.ABGR32.color(1, 0, 0, 0));
+                    image[sampleX + sampleZ * sampledSize] = (byte) FastColor.ABGR32.color(0, 0, 0, 0);
 
                 }
             }
         }
         this.foundCaveBlocks = data;
-        this.image = colorData;
+        this.image = image;
     }
 
     public NoiseCaveLayer(int size, Path imagePath, Path dataPath, int sampleResolution) throws Exception {
@@ -116,9 +120,14 @@ public class NoiseCaveLayer extends TileLayer {
                 CompoundTag compoundTag = NbtIo.read(dataPath.toFile());
                 this.sampleResolution = compoundTag.getInt("res");
                 this.foundCaveBlocks = compoundTag.getIntArray("cave_blocks");
-                this.image = NativeImage.read(Files.readAllBytes(imagePath));
-                if (this.image.getWidth() != (size / this.sampleResolution)) {
-                    throw new IllegalArgumentException("Improper image width.");
+                BufferedImage bufferedImage = Files.exists(imagePath) ? ImageIO.read(imagePath.toFile()) : null;
+                if (bufferedImage != null) {
+                    if (bufferedImage.getWidth() != (size / this.sampleResolution)) {
+                        throw new IllegalArgumentException("Improper image width.");
+                    }
+                    this.image = ((DataBufferInt) bufferedImage.getRaster().getDataBuffer()).getData();
+                } else {
+                    this.image = null;
                 }
             } catch (IOException e) {
                 throw e;
@@ -136,7 +145,7 @@ public class NoiseCaveLayer extends TileLayer {
     }
 
     @Override
-    public @Nullable NativeImage image() {
+    public @Nullable int[] image() {
         return this.image;
     }
 

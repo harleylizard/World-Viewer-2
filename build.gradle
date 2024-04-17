@@ -59,6 +59,10 @@ subprojects {
                 url = "https://maven.daporkchop.net/"
             }
         }
+        maven {
+            name = 'ParchmentMC'
+            url = 'https://maven.parchmentmc.org'
+        }
     }
 
     tasks.withType(JavaCompile).configureEach {

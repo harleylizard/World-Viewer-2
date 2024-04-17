@@ -25,11 +25,11 @@ public abstract class TileLayer {
     public static final List<TileLayerRegistryEntry<?>> FACTORY_REGISTRY = Util.make(() -> {
         List<TileLayerRegistryEntry<?>> tileLayers = new ArrayList<>();
         tileLayers.add(new TileLayerRegistryEntry<BiomeLayer>("biomes", 1, BiomeLayer::new, BiomeLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry<TopBlockMapLayer>("map", 1, TopBlockMapLayer::new, TopBlockMapLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry<HeightsLayer>("heights", 0.5F, HeightsLayer::new, HeightsLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry<NoiseCaveLayer>("caves", 1, NoiseCaveLayer::new, NoiseCaveLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry<SlimeChunkLayer>("slime_chunks", 1, SlimeChunkLayer::new, SlimeChunkLayer::new));
-        tileLayers.add(new TileLayerRegistryEntry<StructuresLayer>("structures", 1, StructuresLayer::new, null));
+//        tileLayers.add(new TileLayerRegistryEntry<TopBlockMapLayer>("map", 1, TopBlockMapLayer::new, TopBlockMapLayer::new));
+//        tileLayers.add(new TileLayerRegistryEntry<HeightsLayer>("heights", 0.5F, HeightsLayer::new, HeightsLayer::new));
+//        tileLayers.add(new TileLayerRegistryEntry<NoiseCaveLayer>("caves", 1, NoiseCaveLayer::new, NoiseCaveLayer::new));
+//        tileLayers.add(new TileLayerRegistryEntry<SlimeChunkLayer>("slime_chunks", 1, SlimeChunkLayer::new, SlimeChunkLayer::new));
+//        tileLayers.add(new TileLayerRegistryEntry<>("structures", 1, StructuresLayer::new, null));
         return tileLayers;
     });
     protected int sampleResolution;
@@ -52,7 +52,7 @@ public abstract class TileLayer {
     }
 
     @Nullable
-    public abstract NativeImage image();
+    public abstract int[] image();
 
     @Nullable
     public CompoundTag tag() {
@@ -72,9 +72,6 @@ public abstract class TileLayer {
     }
 
     public void close() {
-        if (this.image() != null) {
-            this.image().close();
-        }
     }
 
     public static NativeImage makeNativeImageFromColorData(int[][] data) {

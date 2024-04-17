@@ -25,8 +25,8 @@ public class ClientUtil {
         }
     }
 
-    public static NativeImage createImage(int width, int height, boolean useCalloc) {
-        NativeImage nativeImage = new NativeImage(width, height, useCalloc);
+    public static WVNativeImage createImage(int width, int height, boolean useCalloc) {
+        WVNativeImage nativeImage = new WVNativeImage(width, height, useCalloc);
 
         if (((NativeImageAccessor)(Object) nativeImage).wvGetPixels() == 0) {
             throw new IllegalArgumentException("Image was not allocated on NativeImage construction.");

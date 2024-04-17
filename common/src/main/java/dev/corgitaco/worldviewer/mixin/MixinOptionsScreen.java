@@ -1,5 +1,6 @@
 package dev.corgitaco.worldviewer.mixin;
 
+import dev.corgitaco.worldviewer.client.screen.WorldScreenV3;
 import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.OptionsScreen;
@@ -21,7 +22,7 @@ public abstract class MixinOptionsScreen extends Screen {
     private void addWorldViewButton(CallbackInfo ci) {
         if (minecraft.isLocalServer() && minecraft.getSingleplayerServer() != null) {
             this.addRenderableWidget(new Button(this.width / 2 - 155, this.height / 6 + 164 - 6, 150, 20, Component.literal("World Viewer"), (p_96268_) -> {
-                this.minecraft.setScreen(new WorldScreenv2(Component.literal("")));
+                this.minecraft.setScreen(new WorldScreenV3(Component.literal("")));
             }, supplier -> Component.empty()));
         }
     }

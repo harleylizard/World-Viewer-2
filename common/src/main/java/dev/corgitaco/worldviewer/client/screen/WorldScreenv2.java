@@ -223,17 +223,19 @@ public class WorldScreenv2 extends Screen implements RenderTileContext {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         PoseStack stack = guiGraphics.pose();
+        this.renderTileManager.render(guiGraphics, mouseX, mouseY, partialTicks);
+
         stack.pushPose();
         stack.scale(scale, scale, 0);
-        guiGraphics.fill(0, 0, (int) (width / scale), (int) (height / scale), FastColor.ARGB32.color(255, 0, 0, 0));
+//        guiGraphics.fill(0, 0, (int) (width / scale), (int) (height / scale), FastColor.ARGB32.color(255, 0, 0, 0));
 
-        this.renderTileManager.render(guiGraphics, mouseX, mouseY, partialTicks);
 
         drawGrid(guiGraphics);
 
         drawPlayers(guiGraphics);
 
         stack.popPose();
+
 
         guiGraphics.drawString(Minecraft.getInstance().font, minecraft.fpsString, 0, 0, FastColor.ARGB32.color(255, 255, 255, 255));
 

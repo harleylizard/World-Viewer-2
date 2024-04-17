@@ -1,7 +1,6 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
-import com.mojang.blaze3d.platform.NativeImage;
-import dev.corgitaco.worldviewer.client.ClientUtil;
+import dev.corgitaco.worldviewer.client.render.ColorUtils;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.SectionPos;
@@ -13,6 +12,9 @@ import net.minecraft.util.FastColor;
 import net.minecraft.world.level.ChunkPos;
 import org.jetbrains.annotations.Nullable;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,19 +25,19 @@ import java.util.List;
 public class SlimeChunkLayer extends TileLayer {
 
     @Nullable
-    private final NativeImage image;
+    private final int[] image;
 
     @Nullable
     private final boolean[] slimeChunkData;
 
     public SlimeChunkLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable SlimeChunkLayer higherResolution) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks, higherResolution);
-        NativeImage nativeImage;
+        int[] image;
         int dataSize = SectionPos.blockToSectionCoord(size);
 
         boolean[] data = new boolean[dataSize * dataSize];
         if (sampleResolution <= 16 && size <= 128) {
-            nativeImage = ClientUtil.createImage(size, size, true);
+            image = new int[size * size];
             for (int x = 0; x < dataSize; x++) {
                 for (int z = 0; z < dataSize; z++) {
                     int chunkX = SectionPos.blockToSectionCoord(tileWorldX) + x;
@@ -49,15 +51,12 @@ public class SlimeChunkLayer extends TileLayer {
                                 if (Thread.currentThread().isInterrupted()) {
                                     this.slimeChunkData = null;
                                     this.image = null;
-                                    nativeImage.close();
                                     return;
                                 }
                                 if (xMove <= 1 || xMove >= 14 || zMove <= 1 || zMove >= 14) {
                                     int dataX = SectionPos.sectionToBlockCoord(x) + xMove;
                                     int dataZ = SectionPos.sectionToBlockCoord(z) + zMove;
-                                    nativeImage.setPixelRGBA(dataX, dataZ, BiomeLayer._ARGBToABGR(FastColor.ARGB32.color(255, 120, 190, 93)));
-                                } else {
-                                    BiomeLayer._ARGBToABGR(FastColor.ARGB32.color(0, 0, 0, 0));
+                                    image[dataX + dataZ * size] = ColorUtils.ABGR.packABGR( 255,  93,  190,  120);
                                 }
                             }
                         }
@@ -67,11 +66,10 @@ public class SlimeChunkLayer extends TileLayer {
             this.slimeChunkData = data;
 
         } else {
-            nativeImage = null;
             this.slimeChunkData = null;
         }
 
-        this.image = nativeImage;
+        this.image = null;
     }
 
     public SlimeChunkLayer(int size, Path imagePath, Path dataPath, int sampleRes) throws Exception {
@@ -94,7 +92,15 @@ public class SlimeChunkLayer extends TileLayer {
 
                 this.slimeChunkData = slimeChunkData;
                 this.sampleResolution = compoundTag.getInt("res");
-                this.image = NativeImage.read(Files.readAllBytes(imagePath));
+                BufferedImage bufferedImage = Files.exists(imagePath) ? ImageIO.read(imagePath.toFile()) : null;
+                if (bufferedImage != null) {
+                    if (bufferedImage.getWidth() != (size / this.sampleResolution)) {
+                        throw new IllegalArgumentException("Improper image width.");
+                    }
+                    this.image = ((DataBufferInt) bufferedImage.getRaster().getDataBuffer()).getData();
+                } else {
+                    this.image = null;
+                }
             } catch (IOException e) {
                 throw e;
             }
@@ -116,7 +122,7 @@ public class SlimeChunkLayer extends TileLayer {
     }
 
     @Override
-    public NativeImage image() {
+    public int[] image() {
         return this.image;
     }
 

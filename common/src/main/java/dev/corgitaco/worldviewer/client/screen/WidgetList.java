@@ -17,7 +17,7 @@ public class WidgetList<E extends ContainerObjectSelectionList.Entry<E>> extends
         this.setRenderBackground(false);
         this.setRenderTopAndBottom(false);
         if (widgets.isEmpty()) {
-            throw new IllegalArgumentException("Must have at least 1 widget.");
+//            throw new IllegalArgumentException("Must have at least 1 widget.");
         }
 
         for (AbstractWidget widget : widgets) {

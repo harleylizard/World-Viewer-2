@@ -13,6 +13,8 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '8.1.1'
     id "net.darkhax.curseforgegradle" version "1.0.14"
     id "com.modrinth.minotaur" version "2.+"
+    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
+
 }
 base {
     archivesName = "${mod_name}-forge-${minecraft_version}"

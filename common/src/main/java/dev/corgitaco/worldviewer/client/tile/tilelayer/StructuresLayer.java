@@ -89,7 +89,7 @@ public class StructuresLayer extends TileLayer {
     }
 
     @Override
-    public @Nullable NativeImage image() {
+    public @Nullable int[] image() {
         return null;
     }
 

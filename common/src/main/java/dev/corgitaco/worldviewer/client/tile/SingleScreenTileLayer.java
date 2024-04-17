@@ -1,8 +1,6 @@
 package dev.corgitaco.worldviewer.client.tile;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import dev.corgitaco.worldviewer.client.CloseCheck;
-import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -15,9 +13,6 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
 
 
     private final TileLayer tileLayer;
-
-    @Nullable
-    public DynamicTexture dynamicTexture;
 
     private final int minTileWorldX;
     private final int minTileWorldZ;
@@ -69,22 +64,7 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
     }
 
     @Override
-    public void renderTile(GuiGraphics guiGraphics, float scale, float opacity, RenderTileContext renderTileContext) {
-        if (shouldRender && this.tileLayer.image() != null) {
-            if (this.dynamicTexture == null) {
-                this.dynamicTexture = new DynamicTexture(this.tileLayer.image());
-            }
-            renderer().render(guiGraphics, size, this.dynamicTexture.getId(), opacity, renderTileContext);
-        }
-    }
-
-    @Override
-    public TileLayer.Renderer renderer() {
-        return this.tileLayer.renderer();
-    }
-
-    @Override
-    public NativeImage image() {
+    public @Nullable int[] image() {
         return this.tileLayer.image();
     }
 
@@ -101,72 +81,7 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
         return size;
     }
 
-    @Override
-    public boolean sampleResCheck(int worldScreenSampleRes) {
-        return this.sampleRes == worldScreenSampleRes;
-    }
-
-    @Override
-    public boolean shouldRender() {
-        return this.shouldRender;
-    }
-
-    @Override
-    public void setShouldRender(boolean shouldRender) {
-        this.shouldRender = shouldRender;
-    }
-
-    @Override
-    public void closeDynamicTexture() {
-        if (this.dynamicTexture != null) {
-            this.dynamicTexture.close();
-        }
-    }
-
-    @Override
-    public void releaseDynamicTextureID() {
-        if (this.dynamicTexture != null) {
-            this.dynamicTexture.releaseId();
-        }
-    }
-
     public TileLayer tileLayer() {
         return tileLayer;
-    }
-
-    @Override
-    public void closeNativeImage() {
-        this.tileLayer.close();
-    }
-
-    @Override
-    public boolean canClose() {
-        if (image() == null) {
-            return true;
-        }
-        return ((CloseCheck)(Object) this.image()).canClose();
-    }
-
-    @Override
-    public void setCanClose(boolean canClose) {
-        if (image() != null) {
-
-            ((CloseCheck)(Object) this.image()).setCanClose(canClose);
-        }
-    }
-
-    @Override
-    public boolean shouldClose() {
-        if (image() == null) {
-            return true;
-        }
-        return ((CloseCheck)(Object) this.image()).shouldClose();
-    }
-
-    @Override
-    public void setShouldClose(boolean shouldClose) {
-        if (image() != null) {
-            ((CloseCheck)(Object) this.image()).setShouldClose(shouldClose);
-        }
     }
 }
