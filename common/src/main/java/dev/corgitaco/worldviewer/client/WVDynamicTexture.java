@@ -36,10 +36,10 @@ public class WVDynamicTexture extends DynamicTexture {
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     int pixel = subPixels[x + y * width];
-                    byte alpha = ColorUtils.ABGR.unpackAlpha(pixel);
-                    byte red = ColorUtils.ABGR.unpackRed(pixel);
-                    byte green = ColorUtils.ABGR.unpackGreen(pixel);
-                    byte blue = ColorUtils.ABGR.unpackBlue(pixel);
+                    byte alpha = (byte) ColorUtils.ABGR.unpackAlpha(pixel);
+                    byte red = (byte) ColorUtils.ABGR.unpackRed(pixel);
+                    byte green = (byte) ColorUtils.ABGR.unpackGreen(pixel);
+                    byte blue = (byte) ColorUtils.ABGR.unpackBlue(pixel);
 
                     // Calculate the index in the buffer for the current pixel
                     int index = (y * width + x) * 4;
@@ -47,11 +47,12 @@ public class WVDynamicTexture extends DynamicTexture {
                     // Set RGBA values in the buffer
                     buffer.put(index, red); // Red
                     buffer.put(index + 1, green); // Green
-                    buffer.put(index + 2, blue); // Blue
+                    buffer.put(index + 2,  blue); // Blue
                     buffer.put(index + 3, alpha); // Alpha
                 }
             }
 
+            buffer.flip();
             long memAddress = MemoryUtil.memAddress(buffer);
 
             ((WVNativeImage) pixels).uploadSubregion(0, xOffset, zOffset, width, height, memAddress);

@@ -16,7 +16,7 @@ public class WVNativeImage extends NativeImage {
         GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 0);
         GL11.glPixelStorei(GL12.GL_UNPACK_SKIP_IMAGES, 0);
         GL11.glPixelStorei(GL12.GL_UNPACK_IMAGE_HEIGHT, 0);
-        GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
+        GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 4);
         GlStateManager._texSubImage2D(3553, level, xOffset, yOffset, width, height, this.format().glFormat(), 5121, pixelMemoryAddress);
     }
 }

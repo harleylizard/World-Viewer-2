@@ -50,13 +50,8 @@ public class ColorUtils {
     }
 
     public class ABGR {
-        public static int packABGR(int alpha, int blue, int green, int red) {
-            // Shift the components to their respective positions and combine them
-            return packABGR((byte) alpha, (byte) blue, (byte) green, ((byte) red));
-        }
 
-        public static int packABGR(byte alpha, byte blue, byte green, byte red) {
-            // Shift the components to their respective positions and combine them
+        public static int packABGR(int alpha, int blue, int green, int red) {
             return ((alpha << 24) | (blue << 16) | (green << 8) | red);
         }
 
@@ -69,31 +64,28 @@ public class ColorUtils {
 
             int alpha = 255;
 
-            return packABGR((byte) alpha, (byte) blue, (byte) green, (byte) red);
+            return packABGR( alpha,  blue,  green,  red);
         }
 
         public static byte _ABGRFromARGB(byte argb) {
             return (byte) (ARGB.unpackAlpha(argb) | ARGB.unpackBlue(argb) | ARGB.unpackGreen(argb) | ARGB.unpackRed(argb));
         }
 
-        public static byte unpackAlpha(int packedColor) {
+        public static int unpackAlpha(int packedColor) {
             // Shift the alpha component to the rightmost 8 bits and mask out other bits
-            return (byte) ((packedColor >> 24) & 0xFF);
+            return  ((packedColor >> 24) & 0xFF);
         }
 
-        public static byte unpackBlue(int packedColor) {
-            // Shift the blue component to the 2nd rightmost 8 bits and mask out other bits
-            return (byte) ((packedColor >> 16) & 0xFF);
+        public static int unpackBlue(int packedColor) {
+            return ((packedColor >> 16) & 0xFF);
         }
 
-        public static byte unpackGreen(int packedColor) {
-            // Shift the green component to the 3rd rightmost 8 bits and mask out other bits
-            return (byte) ((packedColor >> 8) & 0xFF);
+        public static int unpackGreen(int packedColor) {
+            return  ((packedColor >> 8) & 0xFF);
         }
 
-        public static byte unpackRed(int packedColor) {
-            // Mask out the red component from the rightmost 8 bits
-            return (byte) (packedColor & 0xFF);
+        public static int unpackRed(int packedColor) {
+            return  (packedColor & 0xFF);
         }
     }
 }
