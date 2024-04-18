@@ -2,11 +2,11 @@ package dev.corgitaco.worldviewer.client.screen;
 
 import net.minecraft.world.level.ChunkPos;
 
-public record CoordinateShiftManager(int shift, int scaleShift) {
+public record CoordinateShiftManager(int shift) {
 
 
     public int getRegionBlockSize() {
-        return 1 << shift << scaleShift;
+        return 1 << shift;
     }
 
     public int getRegionImageSize() {
@@ -22,36 +22,36 @@ public record CoordinateShiftManager(int shift, int scaleShift) {
     }
 
     public int getTileCoordFromBlockCoord(int blockCoord) {
-        return blockCoord >> (this.shift / 2) >> scaleShift;
+        return blockCoord >> (this.shift / 2);
     }
 
     public int getBlockCoordFromTileCoord(int tileCoord) {
-        return tileCoord << (this.shift / 2) << scaleShift;
+        return tileCoord << (this.shift / 2);
     }
 
     public int getRegionCoordFromTileCoord(int tileCoord) {
-        return tileCoord >> (this.shift / 2) << scaleShift;
+        return tileCoord >> (this.shift / 2);
     }
 
     public int getTileCoordFromRegionCoord(int regionCoord) {
-        return regionCoord << (this.shift / 2) << scaleShift;
+        return regionCoord << (this.shift / 2);
     }
 
 
     public int getRegionWorldX(long regionPos) {
-        return getRegionX(regionPos) << this.shift << scaleShift;
+        return getRegionX(regionPos) << this.shift;
     }
 
     public int getRegionWorldZ(long regionPos) {
-        return getRegionZ(regionPos) << this.shift << scaleShift;
+        return getRegionZ(regionPos) << this.shift;
     }
 
     public int getRegionCoordFromBlockCoord(int coord) {
-        return coord >> this.shift >> scaleShift;
+        return coord >> this.shift;
     }
 
     public int getBlockCoordFromRegionCoord(int coord) {
-        return coord << this.shift >> scaleShift;
+        return coord << this.shift;
     }
 
     public int getRegionX(long regionPos) {

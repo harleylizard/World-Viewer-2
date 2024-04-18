@@ -55,7 +55,7 @@ public class WorldScreenV3 extends Screen {
     public BoundingBox worldViewArea;
 
 
-    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 5);
+    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10);
     public final BlockPos.MutableBlockPos origin = new BlockPos.MutableBlockPos();
 
     public WorldScreenV3(Component $$0) {
@@ -118,10 +118,13 @@ public class WorldScreenV3 extends Screen {
 
         for (int tileDistanceFromOrigin = 0; tileDistanceFromOrigin <= tileRange; tileDistanceFromOrigin++) {
             int tileSize = this.coordinateShiftManager.getTileBlockSize();
-            int originTileX = getOriginTileX();
-            int originTileZ = getOriginTileZ();
+
+            int originTileX = this.coordinateShiftManager.getTileCoordFromBlockCoord(this.origin.getX());
+            int originTileZ = this.coordinateShiftManager.getTileCoordFromBlockCoord(this.origin.getZ());
+
             int originWorldX = this.coordinateShiftManager.getBlockCoordFromTileCoord(originTileX) + (tileSize / 2);
             int originWorldZ = this.coordinateShiftManager.getBlockCoordFromTileCoord(originTileZ) + (tileSize / 2);
+
             double distance = tileSize * tileDistanceFromOrigin;
 
             for (int i = 0; i < slices; i++) {
@@ -147,7 +150,7 @@ public class WorldScreenV3 extends Screen {
                                                     tileMinBlockX,
                                                     tileMinBlockZ,
                                                     this.coordinateShiftManager.getTileImageSize(),
-                                                    1 << this.coordinateShiftManager.scaleShift(),
+                                                    1,
                                                     new LongOpenHashSet(),
                                                     null
                                             ),
@@ -186,21 +189,12 @@ public class WorldScreenV3 extends Screen {
 
     }
 
-    private int getOriginTileX() {
-        return this.coordinateShiftManager.getTileCoordFromBlockCoord(this.origin.getX());
+    private int getScreenXTileRange() {
+        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterX()) + 2);
     }
-
-    private int getOriginTileZ() {
-        return this.coordinateShiftManager.getTileCoordFromBlockCoord(this.origin.getZ());
-    }
-
 
     private int getScreenZTileRange() {
-        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterX() << this.coordinateShiftManager.scaleShift()) + 2);
-    }
-
-    private int getScreenXTileRange() {
-        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterX() << this.coordinateShiftManager.scaleShift()) + 2);
+        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterZ()) + 2);
     }
 
     @Override

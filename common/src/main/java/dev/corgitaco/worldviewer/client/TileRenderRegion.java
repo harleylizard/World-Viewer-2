@@ -39,17 +39,19 @@ public class TileRenderRegion implements AutoCloseable {
         int localBlockX = minTileWorldX - regionWorldX;
         int localBlockZ = minTileWorldZ - regionWorldZ;
 
-        int localTileXIdx = this.coordinateShiftManager.getTileCoordFromBlockCoord(localBlockX) >> this.coordinateShiftManager.scaleShift();
-        int localTileZIdx = this.coordinateShiftManager.getTileCoordFromBlockCoord(localBlockZ) >> this.coordinateShiftManager.scaleShift();
+        int localTileXIdx = this.coordinateShiftManager.getTileCoordFromBlockCoord(localBlockX);
+        int localTileZIdx = this.coordinateShiftManager.getTileCoordFromBlockCoord(localBlockZ);
 
         int tileImageSize = this.coordinateShiftManager.getTileImageSize();
         layers[localTileXIdx + localTileZIdx * tileImageSize] = layer;
 
-        this.texture.uploadSubImageWithOffset(localBlockX >> this.coordinateShiftManager.scaleShift() , localBlockZ >> this.coordinateShiftManager.scaleShift(), this.coordinateShiftManager.getTileImageSize(), this.coordinateShiftManager.getTileImageSize(), layer.image());
+        this.texture.uploadSubImageWithOffset(localBlockX, localBlockZ, this.coordinateShiftManager.getTileImageSize(), this.coordinateShiftManager.getTileImageSize(), layer.image());
     }
 
     public void render(GuiGraphics guiGraphics) {
-        ClientUtil.blit(guiGraphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), guiGraphics.pose(), 1, getRegionBlockX() >> this.coordinateShiftManager.scaleShift(), getRegionBlockZ() >> this.coordinateShiftManager.scaleShift(), 0F, 0F, this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize());
+        int renderX = getRegionBlockX();
+        int renderY = getRegionBlockZ();
+        ClientUtil.blit(guiGraphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), guiGraphics.pose(), 1, renderX, renderY, 0F, 0F, this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize());
     }
 
 
