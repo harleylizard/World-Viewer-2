@@ -50,33 +50,13 @@ public class BiomeLayer extends TileLayer {
 
     public BiomeLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable BiomeLayer lowerResolution) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks, lowerResolution);
-        int sampledSize = size / sampleResolution;
 
-        OptimizedBiomeStorage data = new OptimizedBiomeStorage(sampledSize);
-
-        if (lowerResolution != null) {
-
-            int previousSampledSize = size / lowerResolution.sampleResolution;
-
-            int scale = sampledSize / previousSampledSize;
-            for (int sampleX = 0; sampleX < previousSampledSize; sampleX++) {
-                for (int sampleZ = 0; sampleZ < previousSampledSize; sampleZ++) {
-                    int scaledX = sampleX * scale;
-                    int scaledZ = sampleZ * scale;
-                    @Nullable
-                    Holder<Biome> biomeRaw = lowerResolution.biomesData.getBiomeRaw(sampleX, sampleZ);
-                    if (biomeRaw != null) {
-                        data.getBiome(scaledX, scaledZ, 0, 0, ((worldX1, worldZ1) -> biomeRaw));
-                    }
-                }
-            }
-        }
-
+        OptimizedBiomeStorage data = new OptimizedBiomeStorage(size);
 
         int[] image = new int[size * size];
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
-        for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
-            for (int sampleZ = 0; sampleZ < sampledSize; sampleZ++) {
+        for (int sampleX = 0; sampleX < size; sampleX++) {
+            for (int sampleZ = 0; sampleZ < size; sampleZ++) {
                 if (Thread.currentThread().isInterrupted()) {
                     this.biomesData = null;
                     this.image = null;
@@ -109,15 +89,9 @@ public class BiomeLayer extends TileLayer {
 
 
 
-                for (int xAdd = 0; xAdd < sampleResolution; xAdd++) {
-                    for (int zAdd = 0; zAdd < sampleResolution; zAdd++) {
-                        int colorX = (sampleX * sampleResolution) + xAdd;
-                        int colorZ = (sampleZ * sampleResolution) + zAdd;
+                image[sampleX + sampleZ * size] = color;
 
-                        image[colorX + colorZ * size] = color;
 
-                    }
-                }
             }
         }
         this.image = image;

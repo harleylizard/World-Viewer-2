@@ -23,11 +23,10 @@ public class TileRenderRegion implements AutoCloseable {
             throw new IllegalArgumentException("Shift must be an even value");
         }
 
-        int tileSize = coordinateShiftManager.getTileSize();
+        int tileSize = coordinateShiftManager.getTileImageSize();
         layers = new SingleScreenTileLayer[(int) (tileSize * tileSize)];
 
-        int blockSize = coordinateShiftManager.getRegionBlockSize();
-        texture = new WVDynamicTexture(ClientUtil.createImage(blockSize, blockSize, true));
+        texture = new WVDynamicTexture(ClientUtil.createImage(coordinateShiftManager.getRegionImageSize(), coordinateShiftManager.getRegionImageSize(), true));
     }
 
 
@@ -40,16 +39,17 @@ public class TileRenderRegion implements AutoCloseable {
         int localBlockX = minTileWorldX - regionWorldX;
         int localBlockZ = minTileWorldZ - regionWorldZ;
 
-        int localTileXIdx = this.coordinateShiftManager.getTileFromBlockCoord(localBlockX);
-        int localTileZIdx = this.coordinateShiftManager.getTileFromBlockCoord(localBlockZ);
+        int localTileXIdx = this.coordinateShiftManager.getTileCoordFromBlockCoord(localBlockX) >> this.coordinateShiftManager.scaleShift();
+        int localTileZIdx = this.coordinateShiftManager.getTileCoordFromBlockCoord(localBlockZ) >> this.coordinateShiftManager.scaleShift();
 
-        layers[localTileXIdx + localTileZIdx * this.coordinateShiftManager.getTileSize()] = layer;
+        int tileImageSize = this.coordinateShiftManager.getTileImageSize();
+        layers[localTileXIdx + localTileZIdx * tileImageSize] = layer;
 
-        this.texture.uploadSubImageWithOffset(localBlockX, localBlockZ, this.coordinateShiftManager.getTileSize(), this.coordinateShiftManager.getTileSize(), layer.image());
+        this.texture.uploadSubImageWithOffset(localBlockX >> this.coordinateShiftManager.scaleShift() , localBlockZ >> this.coordinateShiftManager.scaleShift(), this.coordinateShiftManager.getTileImageSize(), this.coordinateShiftManager.getTileImageSize(), layer.image());
     }
 
     public void render(GuiGraphics guiGraphics) {
-        ClientUtil.blit(guiGraphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), guiGraphics.pose(), 1, getRegionBlockX(), getRegionBlockZ(), 0F, 0F, this.coordinateShiftManager.getRegionBlockSize(), this.coordinateShiftManager.getRegionBlockSize(), this.coordinateShiftManager.getRegionBlockSize(), this.coordinateShiftManager.getRegionBlockSize());
+        ClientUtil.blit(guiGraphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), guiGraphics.pose(), 1, getRegionBlockX() >> this.coordinateShiftManager.scaleShift(), getRegionBlockZ() >> this.coordinateShiftManager.scaleShift(), 0F, 0F, this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize());
     }
 
 

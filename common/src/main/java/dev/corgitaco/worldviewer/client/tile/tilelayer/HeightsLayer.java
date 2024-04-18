@@ -82,7 +82,7 @@ public class HeightsLayer extends TileLayer {
                 }
 
                 int grayScale = getGrayScale(worldY, tileManager.serverLevel());
-                heightsData[sampleX + sampleZ * sampledSize] = (byte) grayScale;
+                heightsData[sampleX + sampleZ * sampledSize] = grayScale;
                 data[idx] = worldY;
             }
         }

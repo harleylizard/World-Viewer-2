@@ -64,12 +64,12 @@ public class SlimeChunkLayer extends TileLayer {
                 }
             }
             this.slimeChunkData = data;
-
+            this.image = image;
         } else {
             this.slimeChunkData = null;
+            this.image = null;
         }
 
-        this.image = null;
     }
 
     public SlimeChunkLayer(int size, Path imagePath, Path dataPath, int sampleRes) throws Exception {

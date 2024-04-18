@@ -6,6 +6,7 @@ import dev.corgitaco.worldviewer.common.WorldViewer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.util.FastColor;
 import org.jetbrains.annotations.NotNull;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
@@ -40,13 +41,16 @@ public class WVDynamicTexture extends DynamicTexture {
                     byte green = ColorUtils.ABGR.unpackGreen(pixel);
                     byte blue = ColorUtils.ABGR.unpackBlue(pixel);
 
-                    buffer.put(red);
-                    buffer.put(green);
-                    buffer.put(blue);
-                    buffer.put(alpha);
+                    // Calculate the index in the buffer for the current pixel
+                    int index = (y * width + x) * 4;
+
+                    // Set RGBA values in the buffer
+                    buffer.put(index, red); // Red
+                    buffer.put(index + 1, green); // Green
+                    buffer.put(index + 2, blue); // Blue
+                    buffer.put(index + 3, alpha); // Alpha
                 }
             }
-            buffer.flip();
 
             long memAddress = MemoryUtil.memAddress(buffer);
 
