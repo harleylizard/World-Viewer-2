@@ -2,11 +2,11 @@ package dev.corgitaco.worldviewer.client.screen;
 
 import net.minecraft.world.level.ChunkPos;
 
-public record CoordinateShiftManager(int shift) {
+public record CoordinateShiftManager(int shift, int scaleShift) {
 
 
     public int getRegionBlockSize() {
-        return 1 << shift;
+        return 1 << shift << scaleShift;
     }
 
     public int getRegionImageSize() {
@@ -18,15 +18,15 @@ public record CoordinateShiftManager(int shift) {
     }
 
     public int getTileBlockSize() {
-        return getRegionBlockSize() >> (shift / 2);
+        return ((1 << shift) >> (shift / 2)) << scaleShift;
     }
 
     public int getTileCoordFromBlockCoord(int blockCoord) {
-        return blockCoord >> (this.shift / 2);
+        return blockCoord >> (this.shift / 2) >> scaleShift;
     }
 
     public int getBlockCoordFromTileCoord(int tileCoord) {
-        return tileCoord << (this.shift / 2);
+        return tileCoord << (this.shift / 2) << scaleShift;
     }
 
     public int getRegionCoordFromTileCoord(int tileCoord) {
@@ -37,29 +37,36 @@ public record CoordinateShiftManager(int shift) {
         return regionCoord << (this.shift / 2);
     }
 
-
     public int getRegionWorldX(long regionPos) {
-        return getRegionX(regionPos) << this.shift;
+        return getRegionX(regionPos) << this.shift << this.scaleShift;
     }
 
     public int getRegionWorldZ(long regionPos) {
-        return getRegionZ(regionPos) << this.shift;
+        return getRegionZ(regionPos) << this.shift << this.scaleShift;
     }
 
     public int getRegionCoordFromBlockCoord(int coord) {
-        return coord >> this.shift;
+        return coord >> this.shift >> this.scaleShift;
     }
 
     public int getBlockCoordFromRegionCoord(int coord) {
-        return coord << this.shift;
+        return coord << this.shift << this.scaleShift;
     }
 
     public int getRegionX(long regionPos) {
-        return ChunkPos.getX(regionPos);
+        return getX(regionPos);
     }
 
     public int getRegionZ(long regionPos) {
-        return ChunkPos.getZ(regionPos);
+        return getZ(regionPos);
+    }
+
+    public static int getX(long $$0) {
+        return (int)($$0 & 4294967295L);
+    }
+
+    public static int getZ(long $$0) {
+        return (int)($$0 >>> 32 & 4294967295L);
     }
 
 }

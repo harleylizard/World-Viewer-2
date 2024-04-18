@@ -55,7 +55,7 @@ public class WorldScreenV3 extends Screen {
     public BoundingBox worldViewArea;
 
 
-    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10);
+    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 1);
     public final BlockPos.MutableBlockPos origin = new BlockPos.MutableBlockPos();
 
     public WorldScreenV3(Component $$0) {
@@ -150,7 +150,7 @@ public class WorldScreenV3 extends Screen {
                                                     tileMinBlockX,
                                                     tileMinBlockZ,
                                                     this.coordinateShiftManager.getTileImageSize(),
-                                                    1,
+                                                    1 << this.coordinateShiftManager.scaleShift(),
                                                     new LongOpenHashSet(),
                                                     null
                                             ),
@@ -190,11 +190,11 @@ public class WorldScreenV3 extends Screen {
     }
 
     private int getScreenXTileRange() {
-        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterX()) + 2);
+        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterX())  << this.coordinateShiftManager.scaleShift() + 2);
     }
 
     private int getScreenZTileRange() {
-        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterZ()) + 2);
+        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterZ())  << this.coordinateShiftManager.scaleShift() + 2);
     }
 
     @Override
@@ -232,10 +232,10 @@ public class WorldScreenV3 extends Screen {
     }
 
     public int getScreenCenterX() {
-        return (int) ((width / 2));
+        return  ((width / 2));
     }
 
     public int getScreenCenterZ() {
-        return (int) ((height / 2));
+        return  ((height / 2));
     }
 }

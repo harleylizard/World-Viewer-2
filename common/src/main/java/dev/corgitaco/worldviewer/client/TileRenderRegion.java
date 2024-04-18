@@ -43,14 +43,22 @@ public class TileRenderRegion implements AutoCloseable {
         int localTileZIdx = this.coordinateShiftManager.getTileCoordFromBlockCoord(localBlockZ);
 
         int tileImageSize = this.coordinateShiftManager.getTileImageSize();
-        layers[localTileXIdx + localTileZIdx * tileImageSize] = layer;
+        int idx = localTileXIdx + localTileZIdx * tileImageSize;
+        layers[idx] = layer;
 
-        this.texture.uploadSubImageWithOffset(localBlockX, localBlockZ, this.coordinateShiftManager.getTileImageSize(), this.coordinateShiftManager.getTileImageSize(), layer.image());
+        int xOffset = localTileXIdx * this.coordinateShiftManager.getTileImageSize();
+        int zOffset = localTileZIdx * this.coordinateShiftManager.getTileImageSize();
+
+        this.texture.uploadSubImageWithOffset(xOffset, zOffset, tileImageSize, tileImageSize, layer.image());
+    }
+
+    public SingleScreenTileLayer[] getLayers() {
+        return layers;
     }
 
     public void render(GuiGraphics guiGraphics) {
-        int renderX = getRegionBlockX();
-        int renderY = getRegionBlockZ();
+        int renderX = getRegionBlockX() >> this.coordinateShiftManager.scaleShift();
+        int renderY = getRegionBlockZ()>> this.coordinateShiftManager.scaleShift();
         ClientUtil.blit(guiGraphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), guiGraphics.pose(), 1, renderX, renderY, 0F, 0F, this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize());
     }
 
