@@ -55,7 +55,7 @@ public class WorldScreenV3 extends Screen {
     public BoundingBox worldViewArea;
 
 
-    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 1);
+    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 5);
     public final BlockPos.MutableBlockPos origin = new BlockPos.MutableBlockPos();
 
     public WorldScreenV3(Component $$0) {
@@ -67,8 +67,8 @@ public class WorldScreenV3 extends Screen {
         PoseStack poseStack = guiGraphics.pose();
 
         poseStack.pushPose();
-        poseStack.translate(getScreenCenterX(), getScreenCenterZ(), 0); // Center the screen
-        poseStack.translate(-origin.getX(), -origin.getZ(), 0);
+        poseStack.translate(getScreenCenterX(), getScreenCenterZ(), 0);
+        poseStack.translate(getOriginRenderOffsetX(), getOriginRenderOffsetZ(), 0);
 
 
         for (Long2ObjectLinkedOpenHashMap<TileRenderRegion> regionMap : this.regions) {
@@ -80,6 +80,19 @@ public class WorldScreenV3 extends Screen {
 
         poseStack.popPose();
 
+    }
+
+
+    private int getOriginRenderOffsetX() {
+        return getOriginRenderOffset(origin.getX());
+    }
+
+    private int getOriginRenderOffsetZ() {
+        return getOriginRenderOffset(origin.getZ());
+    }
+
+    private int getOriginRenderOffset(int origin) {
+        return -(origin >> this.coordinateShiftManager.scaleShift());
     }
 
     @Override
@@ -190,11 +203,11 @@ public class WorldScreenV3 extends Screen {
     }
 
     private int getScreenXTileRange() {
-        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterX())  << this.coordinateShiftManager.scaleShift() + 2);
+        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterX() << this.coordinateShiftManager.scaleShift()) + 2);
     }
 
     private int getScreenZTileRange() {
-        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterZ())  << this.coordinateShiftManager.scaleShift() + 2);
+        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterZ() << this.coordinateShiftManager.scaleShift()) + 2);
     }
 
     @Override

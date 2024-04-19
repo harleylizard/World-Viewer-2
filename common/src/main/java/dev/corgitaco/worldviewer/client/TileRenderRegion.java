@@ -1,5 +1,6 @@
 package dev.corgitaco.worldviewer.client;
 
+import dev.corgitaco.worldviewer.client.render.ColorUtils;
 import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import dev.corgitaco.worldviewer.client.tile.SingleScreenTileLayer;
 import net.minecraft.client.gui.GuiGraphics;
@@ -57,9 +58,17 @@ public class TileRenderRegion implements AutoCloseable {
     }
 
     public void render(GuiGraphics guiGraphics) {
-        int renderX = getRegionBlockX() >> this.coordinateShiftManager.scaleShift();
-        int renderY = getRegionBlockZ()>> this.coordinateShiftManager.scaleShift();
+        int renderX = getRenderX();
+        int renderY = getRenderY();
         ClientUtil.blit(guiGraphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), guiGraphics.pose(), 1, renderX, renderY, 0F, 0F, this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize());
+    }
+
+    private int getRenderX() {
+        return getRegionBlockX() >> this.coordinateShiftManager.scaleShift();
+    }
+
+    private int getRenderY() {
+        return getRegionBlockZ() >> this.coordinateShiftManager.scaleShift();
     }
 
 
