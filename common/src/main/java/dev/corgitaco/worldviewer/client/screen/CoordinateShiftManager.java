@@ -14,27 +14,27 @@ public record CoordinateShiftManager(int shift, int scaleShift) {
     }
 
     public int getTileImageSize() {
-        return getRegionImageSize() >> (shift / 2);
+        return getRegionImageSize() >> (shift >> 1);
     }
 
     public int getTileBlockSize() {
-        return ((1 << shift) >> (shift / 2)) << scaleShift;
+        return ((1 << shift) >> (shift >> 1)) << scaleShift;
     }
 
     public int getTileCoordFromBlockCoord(int blockCoord) {
-        return blockCoord >> (this.shift / 2) >> scaleShift;
+        return blockCoord >> (this.shift >> 1) >> scaleShift;
     }
 
     public int getBlockCoordFromTileCoord(int tileCoord) {
-        return tileCoord << (this.shift / 2) << scaleShift;
+        return tileCoord << (this.shift >> 1) << scaleShift;
     }
 
     public int getRegionCoordFromTileCoord(int tileCoord) {
-        return tileCoord >> (this.shift / 2);
+        return tileCoord >> (this.shift >> 1);
     }
 
     public int getTileCoordFromRegionCoord(int regionCoord) {
-        return regionCoord << (this.shift / 2);
+        return regionCoord << (this.shift >> 1);
     }
 
     public int getRegionWorldX(long regionPos) {
