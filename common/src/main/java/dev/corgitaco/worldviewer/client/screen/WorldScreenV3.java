@@ -15,6 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.FastColor;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 public class WorldScreenV3 extends Screen implements RenderTileContext {
@@ -74,6 +75,8 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
         this.tileLayerRenderTileManager.render(guiGraphics.bufferSource(), poseStack, mouseX, mouseY, partialTicks);
         this.tileLayerRenderTileManager.renderLast(guiGraphics.bufferSource(), poseStack, mouseX, mouseY, partialTicks);
         poseStack.popPose();
+
+        guiGraphics.drawString(Minecraft.getInstance().font, minecraft.fpsString, 0, 0, FastColor.ARGB32.color(255, 255, 255, 255));
     }
 
     @Override
