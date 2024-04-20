@@ -135,15 +135,6 @@ public class HeightsLayer extends TileLayer {
         return Collections.singletonList(Component.literal("Ocean Floor Height: " + y));
     }
 
-
-    @Override
-    public Renderer renderer() {
-        return (graphics, size1, id, opacity, renderTileContext) -> {
-            VertexConsumer vertexConsumer = graphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(id, WVRenderType.DST_COLOR_SRC_ALPHA_TRANSPARENCY));
-            ClientUtil.blit(vertexConsumer, graphics.pose(), opacity, 0, 0, 0F, 0F, size1, size1, size1, size1);
-        };
-    }
-
     @Override
     public boolean isComplete() {
         return this.image != null && this.heightsData != null && this.sampleResolution > 0;

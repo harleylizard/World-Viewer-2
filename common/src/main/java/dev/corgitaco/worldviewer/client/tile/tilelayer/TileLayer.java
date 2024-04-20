@@ -4,7 +4,6 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.WVRenderType;
-import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.Util;
@@ -48,7 +47,7 @@ public abstract class TileLayer {
         return Collections.emptyList();
     }
 
-    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ, RenderTileContext renderTileContext) {
+    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ) {
     }
 
     @Nullable
@@ -86,13 +85,6 @@ public abstract class TileLayer {
         return nativeImage;
     }
 
-    public Renderer renderer() {
-        return (graphics, size1, id, opacity, renderTileContext) -> {
-            VertexConsumer vertexConsumer = graphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(id, RenderType.NO_TRANSPARENCY));
-            ClientUtil.blit(vertexConsumer, graphics.pose(), opacity, 0, 0, 0F, 0F, size1, size1, size1, size1);
-        };
-    }
-
     public abstract boolean isComplete();
 
     @FunctionalInterface
@@ -107,7 +99,7 @@ public abstract class TileLayer {
     @FunctionalInterface
     public interface Renderer {
 
-        void render(GuiGraphics graphics, int size, int id, float opacity, RenderTileContext renderTileContext);
+        void render(GuiGraphics graphics, int size, int id, float opacity);
     }
 
     public record TileLayerRegistryEntry<T extends TileLayer>(String name, float defaultOpacity, GenerationFactory<T> generationFactory, @Nullable DiskFactory diskFactory) {

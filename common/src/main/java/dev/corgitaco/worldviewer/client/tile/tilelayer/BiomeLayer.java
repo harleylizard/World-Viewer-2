@@ -134,33 +134,6 @@ public class BiomeLayer extends TileLayer {
     }
 
     @Override
-    public Renderer renderer() {
-        return (graphics, size1, id, opacity, renderTileContext) -> {
-            Matrix4f matrix = graphics.pose().last().pose();
-            Map<String, ?> data = renderTileContext.data();
-            if (data.get("highlighted_biome") instanceof ResourceKey biomeResourceKey) {
-                if (FAST_COLORS.containsKey(biomeResourceKey)) {
-                    int color = FAST_COLORS.getInt(biomeResourceKey);
-                    VertexConsumer vertexConsumer = graphics.bufferSource().getBuffer(WVRenderType.COLOR_FILTER_WORLD_VIEWER_GUI.apply(id, RenderType.NO_TRANSPARENCY));
-                    float a = FastColor.ARGB32.alpha(color) / 255F;
-
-                    float r = FastColor.ARGB32.red(color) / 255F;
-                    float g = FastColor.ARGB32.green(color) / 255F;
-                    float b = FastColor.ARGB32.blue(color) / 255F;
-
-                    vertexConsumer.vertex(matrix, (float) 0, (float) size1, (float) 0).color(1F, 1F, 1F, opacity).uv(0, 1).color(r, g, b, a).endVertex();
-                    vertexConsumer.vertex(matrix, (float) size1, (float) size1, (float) 0).color(1F, 1F, 1F, opacity).uv(1, 1).color(r, g, b, a).endVertex();
-                    vertexConsumer.vertex(matrix, (float) size1, (float) 0, (float) 0).color(1F, 1F, 1F, opacity).uv(1, 0).color(r, g, b, a).endVertex();
-                    vertexConsumer.vertex(matrix, (float) 0, (float) 0, (float) 0).color(1F, 1F, 1F, opacity).uv(0, 0).color(r, g, b, a).endVertex();
-                    return;
-                }
-
-            }
-            super.renderer().render(graphics, size1, id, opacity, renderTileContext);
-        };
-    }
-
-    @Override
     public boolean isComplete() {
         return this.image != null && this.biomesData != null && this.sampleResolution > 0;
     }

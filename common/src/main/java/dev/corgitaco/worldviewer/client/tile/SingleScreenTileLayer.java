@@ -41,8 +41,8 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
         return this.tileLayer.toolTip(mouseScreenX, mouseScreenY, mouseWorldX, mouseWorldZ, mouseTileLocalX, mouseTileLocalY);
     }
 
-    public void afterTilesRender(GuiGraphics guiGraphics, float scale, float opacity, RenderTileContext renderTileContext) {
-        this.tileLayer.afterTilesRender(guiGraphics, opacity, getMinTileWorldX(), getMinTileWorldZ(), renderTileContext);
+    public void afterTilesRender(GuiGraphics guiGraphics, float scale, float opacity) {
+        this.tileLayer.afterTilesRender(guiGraphics, opacity, getMinTileWorldX(), getMinTileWorldZ());
     }
 
     public int getMinTileWorldX() {

@@ -1,8 +1,6 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 
-import com.mojang.blaze3d.platform.NativeImage;
-import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongArraySet;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -51,19 +49,19 @@ public class StructuresLayer extends TileLayer {
         this.positionsForStructure = positionsForStructure;
     }
 
-    @Override
-    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ, RenderTileContext renderTileContext) {
-        if (this.positionsForStructure != null) {
-            this.positionsForStructure.forEach(((configuredStructureFeatureHolder, longs) -> {
-                for (long structureChunkPos : longs) {
-                    int structureWorldX = SectionPos.sectionToBlockCoord(ChunkPos.getX(structureChunkPos)) - tileMinWorldX;
-                    int structureWorldZ = SectionPos.sectionToBlockCoord(ChunkPos.getZ(structureChunkPos)) - tileMinWorldZ;
-
-                    renderTileContext.structureIconRenderer().getStructureRendering().get(configuredStructureFeatureHolder).render(guiGraphics, structureWorldX, structureWorldZ, structureWorldX + 15, structureWorldZ + 15, (float) opacity, renderTileContext.scale());
-                }
-            }));
-        }
-    }
+//    @Override
+//    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ, RenderTileContext renderTileContext) {
+//        if (this.positionsForStructure != null) {
+//            this.positionsForStructure.forEach(((configuredStructureFeatureHolder, longs) -> {
+//                for (long structureChunkPos : longs) {
+//                    int structureWorldX = SectionPos.sectionToBlockCoord(ChunkPos.getX(structureChunkPos)) - tileMinWorldX;
+//                    int structureWorldZ = SectionPos.sectionToBlockCoord(ChunkPos.getZ(structureChunkPos)) - tileMinWorldZ;
+//
+//                    renderTileContext.structureIconRenderer().getStructureRendering().get(configuredStructureFeatureHolder).render(guiGraphics, structureWorldX, structureWorldZ, structureWorldX + 15, structureWorldZ + 15, (float) opacity, renderTileContext.scale());
+//                }
+//            }));
+//        }
+//    }
 
     @Override
     public @Nullable List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {

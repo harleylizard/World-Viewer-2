@@ -1,7 +1,6 @@
 package dev.corgitaco.worldviewer.mixin;
 
 import dev.corgitaco.worldviewer.client.screen.WorldScreenV3;
-import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.OptionsScreen;
 import net.minecraft.client.gui.screens.Screen;

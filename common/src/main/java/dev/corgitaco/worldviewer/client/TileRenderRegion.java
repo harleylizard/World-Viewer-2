@@ -1,10 +1,14 @@
 package dev.corgitaco.worldviewer.client;
 
-import dev.corgitaco.worldviewer.client.render.ColorUtils;
+import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import dev.corgitaco.worldviewer.client.tile.SingleScreenTileLayer;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.network.chat.Component;
+
+import java.util.Collection;
+import java.util.Collections;
 
 public class TileRenderRegion implements AutoCloseable {
 
@@ -14,7 +18,7 @@ public class TileRenderRegion implements AutoCloseable {
 
     private final SingleScreenTileLayer[] layers;
 
-    public WVDynamicTexture texture;
+    private final WVDynamicTexture texture; // TODO: Allow nullable
 
 
     public TileRenderRegion(CoordinateShiftManager coordinateShiftManager, long regionPos) {
@@ -57,11 +61,20 @@ public class TileRenderRegion implements AutoCloseable {
         return layers;
     }
 
-    public void render(GuiGraphics guiGraphics) {
+    public void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack) {
         int renderX = getRenderX();
         int renderY = getRenderY();
-        ClientUtil.blit(guiGraphics.bufferSource().getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), guiGraphics.pose(), 1, renderX, renderY, 0F, 0F, this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize());
+        ClientUtil.blit(bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), stack, 1, renderX, renderY, 0F, 0F, this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize());
     }
+
+    public void renderLast(MultiBufferSource.BufferSource bufferSource, PoseStack stack) {
+
+    }
+
+    public Collection<Component> toolTip(MultiBufferSource.BufferSource bufferSource, PoseStack stack, double mouseWorldX, double mouseWorldZ) {
+        return Collections.emptyList(); // TODO
+    }
+
 
     private int getRenderX() {
         return getRegionBlockX() >> this.coordinateShiftManager.scaleShift();

@@ -32,43 +32,39 @@ public class SlimeChunkLayer extends TileLayer {
 
     public SlimeChunkLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable SlimeChunkLayer higherResolution) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks, higherResolution);
-        int[] image;
         int dataSize = SectionPos.blockToSectionCoord(size);
 
         boolean[] data = new boolean[dataSize * dataSize];
-        if (sampleResolution <= 16 && size <= 128) {
-            image = new int[size * size];
-            for (int x = 0; x < dataSize; x++) {
-                for (int z = 0; z < dataSize; z++) {
-                    int chunkX = SectionPos.blockToSectionCoord(tileWorldX) + x;
-                    int chunkZ = SectionPos.blockToSectionCoord(tileWorldZ) + z;
+        int[] image = new int[size * size];
 
-                    sampledChunks.add(ChunkPos.asLong(chunkX, chunkZ));
-                    if (tileManager.isSlimeChunk(chunkX, chunkZ)) {
-                        data[x + z * dataSize] = true;
-                        for (int xMove = 0; xMove < 16; xMove++) {
-                            for (int zMove = 0; zMove < 16; zMove++) {
-                                if (Thread.currentThread().isInterrupted()) {
-                                    this.slimeChunkData = null;
-                                    this.image = null;
-                                    return;
-                                }
-                                if (xMove <= 1 || xMove >= 14 || zMove <= 1 || zMove >= 14) {
-                                    int dataX = SectionPos.sectionToBlockCoord(x) + xMove;
-                                    int dataZ = SectionPos.sectionToBlockCoord(z) + zMove;
-                                    image[dataX + dataZ * size] = ColorUtils.ABGR.packABGR( 255,  93,  190,  120);
-                                }
+        for (int x = 0; x < dataSize; x++) {
+            for (int z = 0; z < dataSize; z++) {
+                int chunkX = SectionPos.blockToSectionCoord(tileWorldX) + x;
+                int chunkZ = SectionPos.blockToSectionCoord(tileWorldZ) + z;
+
+                sampledChunks.add(ChunkPos.asLong(chunkX, chunkZ));
+                if (tileManager.isSlimeChunk(chunkX, chunkZ)) {
+                    data[x + z * dataSize] = true;
+                    for (int xMove = 0; xMove < 16; xMove++) {
+                        for (int zMove = 0; zMove < 16; zMove++) {
+                            if (Thread.currentThread().isInterrupted()) {
+                                this.slimeChunkData = null;
+                                this.image = null;
+                                return;
+                            }
+                            if (xMove <= 1 || xMove >= 14 || zMove <= 1 || zMove >= 14) {
+                                int dataX = SectionPos.sectionToBlockCoord(x) + xMove;
+                                int dataZ = SectionPos.sectionToBlockCoord(z) + zMove;
+                                image[dataX + dataZ * size] = ColorUtils.ABGR.packABGR(255, 93, 190, 120);
                             }
                         }
                     }
                 }
             }
-            this.slimeChunkData = data;
-            this.image = image;
-        } else {
-            this.slimeChunkData = null;
-            this.image = null;
         }
+        this.slimeChunkData = data;
+        this.image = image;
+
 
     }
 

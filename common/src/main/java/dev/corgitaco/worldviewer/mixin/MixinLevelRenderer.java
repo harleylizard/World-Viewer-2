@@ -1,7 +1,7 @@
 package dev.corgitaco.worldviewer.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import dev.corgitaco.worldviewer.client.screen.WorldScreenv2;
+import dev.corgitaco.worldviewer.client.screen.WorldScreenV3;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Final;
@@ -20,7 +20,7 @@ public class MixinLevelRenderer {
 
     @Inject(method = "renderLevel", at = @At("HEAD"), cancellable = true)
     private void cancelLevelRenderingIfWorldScreen(float $$0, long $$1, PoseStack $$2, CallbackInfo ci) {
-        if (this.minecraft.screen instanceof WorldScreenv2) {
+        if (this.minecraft.screen instanceof WorldScreenV3) {
             ci.cancel();
         }
     }

@@ -28,7 +28,6 @@ public class TopBlockMapLayer extends TileLayer {
 
     public TopBlockMapLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable TopBlockMapLayer higherResolution) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks, higherResolution);
-        if (size <= 128) {
             int[] image = new int[size * size];
             BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
             for (int chunkX = 0; chunkX < SectionPos.blockToSectionCoord(size); chunkX++) {
@@ -59,11 +58,8 @@ public class TopBlockMapLayer extends TileLayer {
                         }
                     }
                 }
-            }
-            this.image = image;
-        } else {
-            image = null;
         }
+        this.image = image;
     }
 
     public TopBlockMapLayer(int size, Path imagePath, Path dataPath, int sampleRes) throws Exception {
