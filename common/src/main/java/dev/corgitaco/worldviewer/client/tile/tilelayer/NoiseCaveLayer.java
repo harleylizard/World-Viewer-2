@@ -65,7 +65,7 @@ public class NoiseCaveLayer extends TileLayer {
 
                 int foundCaveBlocks = 0;
 
-                int idx = sampleX + sampleZ * sampledSize;
+                int idx = sampleX + sampleZ * size;
                 int previous = data[idx];
 
                 if (previous == -1) {
@@ -84,10 +84,7 @@ public class NoiseCaveLayer extends TileLayer {
 
                 if (foundCaveBlocks > 2) {
                     int grayScale = getGrayScale(((float) foundCaveBlocks) / ((float) searchRange), dataTileManager.serverLevel());
-                    image[sampleX + sampleZ * sampledSize] = grayScale;
-                } else {
-                    image[sampleX + sampleZ * sampledSize] =  FastColor.ABGR32.color(0, 0, 0, 0);
-
+                    image[sampleX + sampleZ * size] = grayScale;
                 }
             }
         }

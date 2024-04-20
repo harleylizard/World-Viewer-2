@@ -1,6 +1,5 @@
 package dev.corgitaco.worldviewer.client.tile;
 
-import com.google.common.collect.Queues;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.RenderTileLayerTileRegion;
 import dev.corgitaco.worldviewer.client.WhiteBackgroundTileRegion;
@@ -8,6 +7,7 @@ import dev.corgitaco.worldviewer.client.WorldCoordSquare;
 import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
+import dev.corgitaco.worldviewer.util.WeightedRunnable;
 import dev.corgitaco.worldviewer.util.WeightedEntry;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
@@ -17,6 +17,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.jetbrains.annotations.NotNull;
 
@@ -99,6 +100,8 @@ public class TileLayerRenderTileManager implements AutoCloseable {
 
         int tileRange = Math.max(xTileRange, zTileRange) + 2;
 
+        BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
+
         for (int tileDistanceFromOrigin = 0; tileDistanceFromOrigin <= tileRange; tileDistanceFromOrigin++) {
             int tileSize = this.coordinateShiftManager.getTileBlockSize();
 
@@ -109,15 +112,18 @@ public class TileLayerRenderTileManager implements AutoCloseable {
             int originWorldZ = this.coordinateShiftManager.getBlockCoordFromTileCoord(originTileZ) + (tileSize / 2);
 
             double distance = tileSize * tileDistanceFromOrigin;
-            for (int layerIdx = 0; layerIdx < this.trackedTileLayerFutures.length; layerIdx++) {
-                for (int i = 0; i < slices; i++) {
-                    double angle = i * sliceSize;
-                    int worldTileX = (int) Math.round(originWorldX + (Math.sin(angle) * distance));
-                    int worldTileZ = (int) Math.round(originWorldZ + (Math.cos(angle) * distance));
-                    if (this.renderTileContext.worldViewArea().intersects(worldTileX, worldTileZ, worldTileX, worldTileZ)) {
+            for (int i = 0; i < slices; i++) {
+                double angle = i * sliceSize;
+                int worldTileX = (int) Math.round(originWorldX + (Math.sin(angle) * distance));
+                int worldTileZ = (int) Math.round(originWorldZ + (Math.cos(angle) * distance));
+                BoundingBox worldViewArea = this.renderTileContext.worldViewArea();
+                int blockSize = Math.max(worldViewArea.getXSpan(), worldViewArea.getZSpan());
+                if (worldViewArea.intersects(worldTileX, worldTileZ, worldTileX, worldTileZ)) {
+                    for (int layerIdx = 0; layerIdx < this.trackedTileLayerFutures.length; layerIdx++) {
 
                         int tileXCoord = this.coordinateShiftManager.getTileCoordFromBlockCoord(worldTileX);
                         int tileZCoord = this.coordinateShiftManager.getTileCoordFromBlockCoord(worldTileZ);
+
                         long tilePackedPos = ChunkPos.asLong(tileXCoord, tileZCoord);
 
                         int finalLayerIdx = layerIdx;
@@ -126,6 +132,9 @@ public class TileLayerRenderTileManager implements AutoCloseable {
                                 CompletableFuture.supplyAsync(() -> {
                                     int tileMinBlockX = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileXCoord);
                                     int tileMinBlockZ = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileZCoord);
+
+                                    mutableBlockPos.set(tileMinBlockX, 0, tileMinBlockZ);
+
                                     return new SingleScreenTileLayer(
                                             tileLayerRegistryEntry.generationFactory().make(
                                                     dataTileManager,
@@ -141,7 +150,17 @@ public class TileLayerRenderTileManager implements AutoCloseable {
                                             tileMinBlockZ,
                                             this.coordinateShiftManager.getTileBlockSize());
 
-                                }, executor).whenComplete((singleScreenTileLayer, throwable) -> {
+                                }, runnable -> executor.execute(new WeightedRunnable() { // Dirty hack to get prioritized runnables in our executor.
+                                    @Override
+                                    public int priority() {
+                                        return  ((tileLayerRegistryEntry.weight() * 100000) * (blockSize / origin.distManhattan(new BlockPos(worldTileX, 0, worldTileZ))));
+                                    }
+
+                                    @Override
+                                    public void run() {
+                                        runnable.run();
+                                    }
+                                })).whenComplete((singleScreenTileLayer, throwable) -> {
                                     if (throwable != null) {
                                         throwable.printStackTrace();
                                     }
@@ -184,26 +203,6 @@ public class TileLayerRenderTileManager implements AutoCloseable {
         return 1 << this.coordinateShiftManager.scaleShift();
     }
 
-    public static ExecutorService createExecutor(String name) {
-        return createExecutor(Mth.clamp((Runtime.getRuntime().availableProcessors() - 1) / 2, 1, 25), name);
-    }
-
-    public static ExecutorService createExecutor(int processors, String name) {
-        MutableInt count = new MutableInt(1);
-        return Executors.newFixedThreadPool(processors, new ThreadFactory() {
-            private final ThreadFactory backing = Executors.defaultThreadFactory();
-
-            @Override
-            public Thread newThread(@NotNull Runnable r) {
-                var thread = backing.newThread(r);
-
-                thread.setName(name + "-" + count.getAndIncrement());
-                thread.setDaemon(true);
-                return thread;
-            }
-        });
-    }
-
     @Override
     public void close() {
         this.tileSubmissionsQueue.clear();
@@ -219,5 +218,39 @@ public class TileLayerRenderTileManager implements AutoCloseable {
 
             value.close();
         }
+    }
+
+
+    public static ThreadPoolExecutor createExecutor(String name) {
+        return createExecutor(Mth.clamp((Runtime.getRuntime().availableProcessors() - 1) / 2, 1, 25), name);
+    }
+
+    public static ThreadPoolExecutor createExecutor(int processors, String name) {
+        MutableInt count = new MutableInt(1);
+
+        ThreadFactory threadFactory = new ThreadFactory() {
+            private final ThreadFactory backing = Executors.defaultThreadFactory();
+
+            @Override
+            public Thread newThread(@NotNull Runnable r) {
+                var thread = backing.newThread(r);
+
+                thread.setName(name + "-" + count.getAndIncrement());
+                thread.setDaemon(true);
+                return thread;
+            }
+        };
+
+
+        return new ThreadPoolExecutor(processors, processors, 0L, TimeUnit.MILLISECONDS,
+                new PriorityBlockingQueue<>(1000 * TileLayer.FACTORY_REGISTRY.size(), Comparator.comparingInt(value -> {
+
+                    if (value instanceof WeightedRunnable weightedRunnable) {
+                        return weightedRunnable.priority();
+                    }
+
+                    return 0;
+                }).reversed()),
+                threadFactory);
     }
 }
