@@ -1,9 +1,10 @@
 package dev.corgitaco.worldviewer.client.tile;
 
 import com.google.common.collect.Queues;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
-import dev.corgitaco.worldviewer.client.TileRenderRegion;
+import dev.corgitaco.worldviewer.client.RenderTileLayerTileRegion;
+import dev.corgitaco.worldviewer.client.WhiteBackgroundTileRegion;
+import dev.corgitaco.worldviewer.client.WorldCoordSquare;
 import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
@@ -20,7 +21,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.*;
 
-public class RenderTileManager implements AutoCloseable {
+public class TileLayerRenderTileManager implements AutoCloseable {
 
     private final ExecutorService executor = createExecutor("Render-Tile-Generator");
     private final ArrayBlockingQueue<Runnable> tileSubmissionsQueue = Queues.newArrayBlockingQueue(1000);
@@ -29,18 +30,20 @@ public class RenderTileManager implements AutoCloseable {
             maps[i] = new Long2ObjectLinkedOpenHashMap<>();
         }
     });
-    private final Long2ObjectLinkedOpenHashMap<TileRenderRegion>[] regions = Util.make(new Long2ObjectLinkedOpenHashMap[TileLayer.FACTORY_REGISTRY.size()], maps -> {
+    private final Long2ObjectLinkedOpenHashMap<RenderTileLayerTileRegion>[] regions = Util.make(new Long2ObjectLinkedOpenHashMap[TileLayer.FACTORY_REGISTRY.size()], maps -> {
         for (int i = 0; i < maps.length; i++) {
             maps[i] = new Long2ObjectLinkedOpenHashMap<>();
         }
     });
+
+    private final Long2ObjectLinkedOpenHashMap<WhiteBackgroundTileRegion> whiteBackGroundRegions = new Long2ObjectLinkedOpenHashMap<>();
 
     private final DataTileManager dataTileManager;
     private final RenderTileContext renderTileContext;
     private final CoordinateShiftManager coordinateShiftManager;
     private final BlockPos origin;
 
-    public RenderTileManager(BlockPos origin, RenderTileContext renderTileContext, DataTileManager dataTileManager) {
+    public TileLayerRenderTileManager(BlockPos origin, RenderTileContext renderTileContext, DataTileManager dataTileManager) {
         this.origin = origin;
         this.renderTileContext = renderTileContext;
         this.coordinateShiftManager = renderTileContext.coordinateShiftManager();
@@ -52,18 +55,23 @@ public class RenderTileManager implements AutoCloseable {
     }
 
     public void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack, int mouseX, int mouseY, float partialTicks) {
-        for (Long2ObjectLinkedOpenHashMap<TileRenderRegion> regionMap : this.regions) {
-            for (Long2ObjectMap.Entry<TileRenderRegion> tileRenderRegionEntry : regionMap.long2ObjectEntrySet()) {
-                TileRenderRegion renderRegion = tileRenderRegionEntry.getValue();
+        for (Long2ObjectMap.Entry<WhiteBackgroundTileRegion> tileRenderRegionEntry : this.whiteBackGroundRegions.long2ObjectEntrySet()) {
+            WhiteBackgroundTileRegion renderRegion = tileRenderRegionEntry.getValue();
+            renderRegion.render(bufferSource, stack);
+
+        }
+        for (Long2ObjectLinkedOpenHashMap<RenderTileLayerTileRegion> regionMap : this.regions) {
+            for (Long2ObjectMap.Entry<RenderTileLayerTileRegion> tileRenderRegionEntry : regionMap.long2ObjectEntrySet()) {
+                RenderTileLayerTileRegion renderRegion = tileRenderRegionEntry.getValue();
                 renderRegion.render(bufferSource, stack);
             }
         }
     }
 
     public void renderLast(MultiBufferSource.BufferSource bufferSource, PoseStack stack, int mouseX, int mouseY, float partialTicks) {
-        for (Long2ObjectLinkedOpenHashMap<TileRenderRegion> regionMap : this.regions) {
-            for (Long2ObjectMap.Entry<TileRenderRegion> tileRenderRegionEntry : regionMap.long2ObjectEntrySet()) {
-                TileRenderRegion renderRegion = tileRenderRegionEntry.getValue();
+        for (Long2ObjectLinkedOpenHashMap<RenderTileLayerTileRegion> regionMap : this.regions) {
+            for (Long2ObjectMap.Entry<RenderTileLayerTileRegion> tileRenderRegionEntry : regionMap.long2ObjectEntrySet()) {
+                RenderTileLayerTileRegion renderRegion = tileRenderRegionEntry.getValue();
                 renderRegion.renderLast(bufferSource, stack);
             }
         }
@@ -148,9 +156,14 @@ public class RenderTileManager implements AutoCloseable {
                                         int tileX = this.coordinateShiftManager.getTileCoordFromBlockCoord(minTileWorldX);
                                         int tileZ = this.coordinateShiftManager.getTileCoordFromBlockCoord(minTileWorldZ);
 
-                                        TileRenderRegion tileRenderRegion = regions[finalLayerIdx].computeIfAbsent(ChunkPos.asLong(regionX, regionZ), regionKey -> new TileRenderRegion(this.coordinateShiftManager, regionKey));
+                                        long regionPos = ChunkPos.asLong(regionX, regionZ);
+                                        WhiteBackgroundTileRegion whiteBackgroundTileRegion = this.whiteBackGroundRegions.computeIfAbsent(regionPos, regionKey -> new WhiteBackgroundTileRegion(this.coordinateShiftManager, regionKey));
 
-                                        tileRenderRegion.insertLayer(singleScreenTileLayer);
+                                        whiteBackgroundTileRegion.insertTile(new WorldCoordSquare(minTileWorldX, minTileWorldZ, singleScreenTileLayer.getMaxTileWorldX(), singleScreenTileLayer.getMaxTileWorldZ()));
+
+                                        RenderTileLayerTileRegion tileLayerRenderRegion = regions[finalLayerIdx].computeIfAbsent(regionPos, regionKey -> new RenderTileLayerTileRegion(this.coordinateShiftManager, regionKey));
+
+                                        tileLayerRenderRegion.insertTile(singleScreenTileLayer);
                                         this.trackedTileLayerFutures[finalLayerIdx].remove(ChunkPos.asLong(tileX, tileZ));
                                     });
                                 })
@@ -190,10 +203,16 @@ public class RenderTileManager implements AutoCloseable {
     public void close() {
         this.tileSubmissionsQueue.clear();
         this.executor.shutdownNow();
-        for (Long2ObjectLinkedOpenHashMap<TileRenderRegion> region : this.regions) {
-            for (Long2ObjectMap.Entry<TileRenderRegion> tileRenderRegionEntry : region.long2ObjectEntrySet()) {
+        for (Long2ObjectLinkedOpenHashMap<RenderTileLayerTileRegion> region : this.regions) {
+            for (Long2ObjectMap.Entry<RenderTileLayerTileRegion> tileRenderRegionEntry : region.long2ObjectEntrySet()) {
                 tileRenderRegionEntry.getValue().close();
             }
+        }
+
+        for (Long2ObjectMap.Entry<WhiteBackgroundTileRegion> whiteBackgroundTileRegionEntry : this.whiteBackGroundRegions.long2ObjectEntrySet()) {
+            WhiteBackgroundTileRegion value = whiteBackgroundTileRegionEntry.getValue();
+
+            value.close();
         }
     }
 }

@@ -3,7 +3,7 @@ package dev.corgitaco.worldviewer.client.screen;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.render.ColorUtils;
 import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
-import dev.corgitaco.worldviewer.client.tile.RenderTileManager;
+import dev.corgitaco.worldviewer.client.tile.TileLayerRenderTileManager;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import dev.corgitaco.worldviewer.platform.ModPlatform;
 import net.minecraft.client.Minecraft;
@@ -14,7 +14,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.FastColor;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 public class WorldScreenV3 extends Screen implements RenderTileContext {
@@ -24,7 +23,7 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
     private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 5);
     private final BlockPos.MutableBlockPos origin = new BlockPos.MutableBlockPos();
 
-    private RenderTileManager renderTileManager;
+    private TileLayerRenderTileManager tileLayerRenderTileManager;
 
     public WorldScreenV3(Component component) {
         super(component);
@@ -52,8 +51,8 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
         );
         DataTileManager dataTileManager = new DataTileManager(ModPlatform.INSTANCE.configPath().resolve(String.valueOf(level.getSeed())), level.getChunkSource().getGenerator(), level.getChunkSource().getGenerator().getBiomeSource(), level, level.getSeed());
 
-        this.renderTileManager = new RenderTileManager(this.origin, this, dataTileManager);
-        this.renderTileManager.init();
+        this.tileLayerRenderTileManager = new TileLayerRenderTileManager(this.origin, this, dataTileManager);
+        this.tileLayerRenderTileManager.init();
     }
 
     @Override
@@ -64,15 +63,15 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
 
         poseStack.translate(getScreenCenterX(), getScreenCenterZ(), 0);
         poseStack.translate(getOriginRenderOffsetX(), getOriginRenderOffsetZ(), 0);
-        this.renderTileManager.render(guiGraphics.bufferSource(), poseStack, mouseX, mouseY, partialTicks);
-        this.renderTileManager.renderLast(guiGraphics.bufferSource(), poseStack, mouseX, mouseY, partialTicks);
+        this.tileLayerRenderTileManager.render(guiGraphics.bufferSource(), poseStack, mouseX, mouseY, partialTicks);
+        this.tileLayerRenderTileManager.renderLast(guiGraphics.bufferSource(), poseStack, mouseX, mouseY, partialTicks);
         poseStack.popPose();
     }
 
     @Override
     public void tick() {
         super.tick();
-        this.renderTileManager.tick();
+        this.tileLayerRenderTileManager.tick();
     }
 
     private int getScreenXTileRange() {
@@ -87,7 +86,7 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
 
     @Override
     public void onClose() {
-        this.renderTileManager.close();
+        this.tileLayerRenderTileManager.close();
         super.onClose();
     }
 

@@ -1,7 +1,7 @@
 package dev.corgitaco.worldviewer.common.storage;
 
 
-import dev.corgitaco.worldviewer.client.tile.RenderTileManager;
+import dev.corgitaco.worldviewer.client.tile.TileLayerRenderTileManager;
 import dev.corgitaco.worldviewer.common.WorldViewer;
 import dev.corgitaco.worldviewer.mixin.IOWorkerAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -38,7 +38,7 @@ import java.util.concurrent.ExecutorService;
 
 public class DataTileManager {
 
-    private static final ExecutorService SAVE_THREAD = RenderTileManager.createExecutor(1, "Worker-Data-Tile-Saver-IO");
+    private static final ExecutorService SAVE_THREAD = TileLayerRenderTileManager.createExecutor(1, "Worker-Data-Tile-Saver-IO");
 
     private final LongObjConcurrentHashMap<DataTile> dataTiles = new LongObjConcurrentHashMap<>();
     private final Path saveDir;

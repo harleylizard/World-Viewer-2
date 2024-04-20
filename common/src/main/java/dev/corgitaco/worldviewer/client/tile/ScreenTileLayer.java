@@ -2,16 +2,7 @@ package dev.corgitaco.worldviewer.client.tile;
 
 import org.jetbrains.annotations.Nullable;
 
-public interface ScreenTileLayer {
-
-
-    int getMinTileWorldX();
-
-    int getMinTileWorldZ();
-
-    int getMaxTileWorldX();
-
-    int getMaxTileWorldZ();
+public interface ScreenTileLayer extends Tile {
 
     @Nullable
     int[] image();
