@@ -2,6 +2,7 @@ package dev.corgitaco.worldviewer.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
+import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.client.tile.Tile;
 import net.minecraft.client.renderer.MultiBufferSource;
 
@@ -28,7 +29,7 @@ public abstract class TileRegion<T extends Tile> implements AutoCloseable {
 
     public abstract void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack);
 
-    public void renderLast(MultiBufferSource.BufferSource bufferSource, PoseStack stack) {}
+    public void renderLast(MultiBufferSource.BufferSource bufferSource, PoseStack stack, RenderTileContext renderTileContext) {}
 
 
     public abstract void insertTile(T layer);

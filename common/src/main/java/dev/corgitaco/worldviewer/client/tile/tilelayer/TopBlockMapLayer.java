@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -20,46 +21,64 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 public class TopBlockMapLayer extends TileLayer {
+
+    @Nullable
+    private final int[] data;
+
 
     @Nullable
     private final int[] image;
 
     public TopBlockMapLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable TopBlockMapLayer higherResolution) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks, higherResolution);
-            int[] image = new int[size * size];
-            BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
-            for (int chunkX = 0; chunkX < SectionPos.blockToSectionCoord(size); chunkX++) {
-                for (int chunkZ = 0; chunkZ < SectionPos.blockToSectionCoord(size); chunkZ++) {
-                    if (Thread.currentThread().isInterrupted()) {
-                        this.image = null;
-                        return;
-                    }
-                    LevelChunk chunk = Minecraft.getInstance().level.getChunkSource().getChunkNow(SectionPos.blockToSectionCoord(tileWorldX) + chunkX, SectionPos.blockToSectionCoord(tileWorldZ) + chunkZ);
-                    if (chunk != null) {
-                        for (int x = 0; x < 16; x++) {
-                            for (int z = 0; z < 16; z++) {
-                                int pixelX = SectionPos.sectionToBlockCoord(chunkX) + x;
-                                int pixelZ = SectionPos.sectionToBlockCoord(chunkZ) + z;
 
-                                int height = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
+        int[] data = null;
 
-                                BlockState blockState = chunk.getBlockState(mutable.set(pixelX, height, pixelZ));
+        int[] image = null;
 
-                                int mapColor = blockState.getMapColor(Minecraft.getInstance().level, BlockPos.ZERO).col;
-                                int r = (mapColor >> 16 & 255);
-                                int g = (mapColor >> 8 & 255);
-                                int b = (mapColor & 255);
-
-                                image[pixelX + pixelZ * size] = ColorUtils.ABGR.packABGR(255, b, g, r);
-                            }
-
-                        }
-                    }
+        BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
+        for (int sampleX = 0; sampleX < size; sampleX++) {
+            for (int sampleZ = 0; sampleZ < size; sampleZ++) {
+                if (Thread.currentThread().isInterrupted()) {
+                    this.data = null;
+                    this.image = null;
+                    return;
                 }
+                worldPos.set(tileWorldX + (sampleX * sampleResolution), 0, tileWorldZ + (sampleZ * sampleResolution));
+
+                int idx = sampleX + sampleZ * size;
+
+                LevelChunk chunkNow = Minecraft.getInstance().level.getChunkSource().getChunkNow(SectionPos.blockToSectionCoord(worldPos.getX()), SectionPos.blockToSectionCoord(worldPos.getZ()));
+
+
+                if (chunkNow != null) {
+                    if (image == null) {
+                        image = new int[size * size];
+
+                    }
+                    if (data == null) {
+                        data = new int[size * size];
+                        Arrays.fill(data, Integer.MIN_VALUE);
+                    }
+
+                    BlockState blockState = chunkNow.getBlockState(worldPos.setY(chunkNow.getHeight(Heightmap.Types.WORLD_SURFACE, worldPos.getX(), worldPos.getZ())));
+                    int mapColor = blockState.getMapColor(Minecraft.getInstance().level, BlockPos.ZERO).col;
+                    int r = (mapColor >> 16 & 255);
+                    int g = (mapColor >> 8 & 255);
+                    int b = (mapColor & 255);
+
+                    image[sampleX + sampleZ * size] = ColorUtils.ABGR.packABGR(255, b, g, r);
+                    ;
+                    data[idx] = Block.BLOCK_STATE_REGISTRY.getId(blockState);
+                }
+            }
         }
+
         this.image = image;
+        this.data = data;
     }
 
     public TopBlockMapLayer(int size, Path imagePath, Path dataPath, int sampleRes) throws Exception {
@@ -88,6 +107,7 @@ public class TopBlockMapLayer extends TileLayer {
         } else {
             this.image = null;
         }
+        this.data = null;
     }
 
     @Override

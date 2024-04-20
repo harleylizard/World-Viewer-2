@@ -40,29 +40,14 @@ public class HeightsLayer extends TileLayer {
     public HeightsLayer(DataTileManager tileManager, int y, int worldX, int worldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable HeightsLayer lowerResolution) {
         super(tileManager, y, worldX, worldZ, size, sampleResolution, sampledChunks, lowerResolution);
 
-        int sampledSize = size / sampleResolution;
-        int[] data = new int[sampledSize * sampledSize];
+        int[] data = new int[size * size];
         Arrays.fill(data, Integer.MIN_VALUE);
 
-        int[] heightsData = new int[sampledSize * sampledSize];
-
-        if (lowerResolution != null) {
-
-            int previousSampledSize = size / lowerResolution.sampleResolution;
-
-            int scale = sampledSize / previousSampledSize;
-
-            for (int sampleX = 0; sampleX < previousSampledSize; sampleX++) {
-                for (int sampleZ = 0; sampleZ < previousSampledSize; sampleZ++) {
-                    int foundCaveBlocks = lowerResolution.heightsData[sampleX + sampleZ * previousSampledSize];
-                    data[(sampleX * scale) + (sampleZ * scale) * sampledSize] = foundCaveBlocks;
-                }
-            }
-        }
+        int[] heightsData = new int[size * size];
 
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
-        for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
-            for (int sampleZ = 0; sampleZ < sampledSize; sampleZ++) {
+        for (int sampleX = 0; sampleX < size; sampleX++) {
+            for (int sampleZ = 0; sampleZ < size; sampleZ++) {
                 if (Thread.currentThread().isInterrupted()) {
                     this.heightsData = null;
                     this.image = null;
@@ -70,7 +55,7 @@ public class HeightsLayer extends TileLayer {
                 }
                 worldPos.set(worldX + (sampleX * sampleResolution), 0, worldZ + (sampleZ * sampleResolution));
 
-                int idx = sampleX + sampleZ * sampledSize;
+                int idx = sampleX + sampleZ * size;
                 int previous = data[idx];
                 int worldY;
 
@@ -82,7 +67,7 @@ public class HeightsLayer extends TileLayer {
                 }
 
                 int grayScale = getGrayScale(worldY, tileManager.serverLevel());
-                heightsData[sampleX + sampleZ * sampledSize] = grayScale;
+                heightsData[sampleX + sampleZ * size] = grayScale;
                 data[idx] = worldY;
             }
         }

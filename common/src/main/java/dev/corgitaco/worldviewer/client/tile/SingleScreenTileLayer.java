@@ -1,8 +1,10 @@
 package dev.corgitaco.worldviewer.client.tile;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
@@ -41,8 +43,8 @@ public class SingleScreenTileLayer implements ScreenTileLayer {
         return this.tileLayer.toolTip(mouseScreenX, mouseScreenY, mouseWorldX, mouseWorldZ, mouseTileLocalX, mouseTileLocalY);
     }
 
-    public void afterTilesRender(GuiGraphics guiGraphics, float scale, float opacity) {
-        this.tileLayer.afterTilesRender(guiGraphics, opacity, getMinTileWorldX(), getMinTileWorldZ());
+    public void afterTilesRender(MultiBufferSource.BufferSource bufferSource, PoseStack stack, float opacity, RenderTileContext renderTileContext) {
+        this.tileLayer.afterTilesRender(bufferSource, stack, opacity, getMinTileWorldX(), getMinTileWorldZ(), renderTileContext);
     }
 
     public int getMinTileWorldX() {

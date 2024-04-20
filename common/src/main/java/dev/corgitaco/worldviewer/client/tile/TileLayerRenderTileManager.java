@@ -8,6 +8,7 @@ import dev.corgitaco.worldviewer.client.WorldCoordSquare;
 import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
+import dev.corgitaco.worldviewer.util.WeightedEntry;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -19,12 +20,13 @@ import net.minecraft.world.level.ChunkPos;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Comparator;
 import java.util.concurrent.*;
 
 public class TileLayerRenderTileManager implements AutoCloseable {
 
     private final ExecutorService executor = createExecutor("Render-Tile-Generator");
-    private final ArrayBlockingQueue<Runnable> tileSubmissionsQueue = Queues.newArrayBlockingQueue(1000);
+    private final PriorityBlockingQueue<WeightedEntry<Runnable>> tileSubmissionsQueue = new PriorityBlockingQueue<>(1000 * TileLayer.FACTORY_REGISTRY.size(), Comparator.comparingInt(WeightedEntry::weight));
     private final Long2ObjectLinkedOpenHashMap<CompletableFuture<SingleScreenTileLayer>>[] trackedTileLayerFutures = Util.make(new Long2ObjectLinkedOpenHashMap[TileLayer.FACTORY_REGISTRY.size()], maps -> {
         for (int i = 0; i < maps.length; i++) {
             maps[i] = new Long2ObjectLinkedOpenHashMap<>();
@@ -72,7 +74,7 @@ public class TileLayerRenderTileManager implements AutoCloseable {
         for (Long2ObjectLinkedOpenHashMap<RenderTileLayerTileRegion> regionMap : this.regions) {
             for (Long2ObjectMap.Entry<RenderTileLayerTileRegion> tileRenderRegionEntry : regionMap.long2ObjectEntrySet()) {
                 RenderTileLayerTileRegion renderRegion = tileRenderRegionEntry.getValue();
-                renderRegion.renderLast(bufferSource, stack);
+                renderRegion.renderLast(bufferSource, stack, this.renderTileContext);
             }
         }
     }
@@ -81,7 +83,7 @@ public class TileLayerRenderTileManager implements AutoCloseable {
         int tasks = 0;
 
         while (!tileSubmissionsQueue.isEmpty() && tasks <= 100) {
-            Runnable poll = tileSubmissionsQueue.poll();
+            Runnable poll = tileSubmissionsQueue.poll().value();
             poll.run();
             tasks++;
 
@@ -107,25 +109,25 @@ public class TileLayerRenderTileManager implements AutoCloseable {
             int originWorldZ = this.coordinateShiftManager.getBlockCoordFromTileCoord(originTileZ) + (tileSize / 2);
 
             double distance = tileSize * tileDistanceFromOrigin;
-
-            for (int i = 0; i < slices; i++) {
-                double angle = i * sliceSize;
-                int worldTileX = (int) Math.round(originWorldX + (Math.sin(angle) * distance));
-                int worldTileZ = (int) Math.round(originWorldZ + (Math.cos(angle) * distance));
-                if (this.renderTileContext.worldViewArea().intersects(worldTileX, worldTileZ, worldTileX, worldTileZ)) {
-                    for (int layerIdx = 0; layerIdx < this.trackedTileLayerFutures.length; layerIdx++) {
+            for (int layerIdx = 0; layerIdx < this.trackedTileLayerFutures.length; layerIdx++) {
+                for (int i = 0; i < slices; i++) {
+                    double angle = i * sliceSize;
+                    int worldTileX = (int) Math.round(originWorldX + (Math.sin(angle) * distance));
+                    int worldTileZ = (int) Math.round(originWorldZ + (Math.cos(angle) * distance));
+                    if (this.renderTileContext.worldViewArea().intersects(worldTileX, worldTileZ, worldTileX, worldTileZ)) {
 
                         int tileXCoord = this.coordinateShiftManager.getTileCoordFromBlockCoord(worldTileX);
                         int tileZCoord = this.coordinateShiftManager.getTileCoordFromBlockCoord(worldTileZ);
                         long tilePackedPos = ChunkPos.asLong(tileXCoord, tileZCoord);
 
                         int finalLayerIdx = layerIdx;
+                        TileLayer.TileLayerRegistryEntry<?> tileLayerRegistryEntry = TileLayer.FACTORY_REGISTRY.get(finalLayerIdx);
                         trackedTileLayerFutures[layerIdx].computeIfAbsent(tilePackedPos, key ->
                                 CompletableFuture.supplyAsync(() -> {
                                     int tileMinBlockX = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileXCoord);
                                     int tileMinBlockZ = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileZCoord);
                                     return new SingleScreenTileLayer(
-                                            TileLayer.FACTORY_REGISTRY.get(finalLayerIdx).generationFactory().make(
+                                            tileLayerRegistryEntry.generationFactory().make(
                                                     dataTileManager,
                                                     63,
                                                     tileMinBlockX,
@@ -144,7 +146,7 @@ public class TileLayerRenderTileManager implements AutoCloseable {
                                         throwable.printStackTrace();
                                     }
 
-                                    this.tileSubmissionsQueue.add(() -> {
+                                    this.tileSubmissionsQueue.add(new WeightedEntry<>(() -> {
 
                                         int minTileWorldX = singleScreenTileLayer.getMinTileWorldX();
                                         int minTileWorldZ = singleScreenTileLayer.getMinTileWorldZ();
@@ -157,15 +159,18 @@ public class TileLayerRenderTileManager implements AutoCloseable {
                                         int tileZ = this.coordinateShiftManager.getTileCoordFromBlockCoord(minTileWorldZ);
 
                                         long regionPos = ChunkPos.asLong(regionX, regionZ);
-                                        WhiteBackgroundTileRegion whiteBackgroundTileRegion = this.whiteBackGroundRegions.computeIfAbsent(regionPos, regionKey -> new WhiteBackgroundTileRegion(this.coordinateShiftManager, regionKey));
 
-                                        whiteBackgroundTileRegion.insertTile(new WorldCoordSquare(minTileWorldX, minTileWorldZ, singleScreenTileLayer.getMaxTileWorldX(), singleScreenTileLayer.getMaxTileWorldZ()));
+                                        if (singleScreenTileLayer.image() != null) {
+                                            WhiteBackgroundTileRegion whiteBackgroundTileRegion = this.whiteBackGroundRegions.computeIfAbsent(regionPos, regionKey -> new WhiteBackgroundTileRegion(this.coordinateShiftManager, regionKey));
 
-                                        RenderTileLayerTileRegion tileLayerRenderRegion = regions[finalLayerIdx].computeIfAbsent(regionPos, regionKey -> new RenderTileLayerTileRegion(this.coordinateShiftManager, regionKey));
+                                            whiteBackgroundTileRegion.insertTile(new WorldCoordSquare(minTileWorldX, minTileWorldZ, singleScreenTileLayer.getMaxTileWorldX(), singleScreenTileLayer.getMaxTileWorldZ()));
+                                        }
+
+                                        RenderTileLayerTileRegion tileLayerRenderRegion = regions[finalLayerIdx].computeIfAbsent(regionPos, regionKey -> new RenderTileLayerTileRegion(this.coordinateShiftManager, regionKey, tileLayerRegistryEntry.transparencyStateShard()));
 
                                         tileLayerRenderRegion.insertTile(singleScreenTileLayer);
                                         this.trackedTileLayerFutures[finalLayerIdx].remove(ChunkPos.asLong(tileX, tileZ));
-                                    });
+                                    }, tileLayerRegistryEntry.weight()));
                                 })
                         );
                     }

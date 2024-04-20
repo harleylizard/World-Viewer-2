@@ -1,6 +1,7 @@
 package dev.corgitaco.worldviewer.client.screen;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import dev.corgitaco.worldviewer.client.StructureIconRenderer;
 import dev.corgitaco.worldviewer.client.render.ColorUtils;
 import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.client.tile.TileLayerRenderTileManager;
@@ -20,10 +21,13 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
 
     private BoundingBox worldViewArea;
 
-    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 5);
+    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 2);
     private final BlockPos.MutableBlockPos origin = new BlockPos.MutableBlockPos();
 
     private TileLayerRenderTileManager tileLayerRenderTileManager;
+
+    private StructureIconRenderer structureIconRenderer;
+
 
     public WorldScreenV3(Component component) {
         super(component);
@@ -50,6 +54,10 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
                 )
         );
         DataTileManager dataTileManager = new DataTileManager(ModPlatform.INSTANCE.configPath().resolve(String.valueOf(level.getSeed())), level.getChunkSource().getGenerator(), level.getChunkSource().getGenerator().getBiomeSource(), level, level.getSeed());
+
+
+        this.structureIconRenderer = new StructureIconRenderer(level);
+        this.structureIconRenderer.init();
 
         this.tileLayerRenderTileManager = new TileLayerRenderTileManager(this.origin, this, dataTileManager);
         this.tileLayerRenderTileManager.init();
@@ -128,6 +136,11 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
     @Override
     public BoundingBox worldViewArea() {
         return worldViewArea;
+    }
+
+    @Override
+    public StructureIconRenderer structureRenderer() {
+        return this.structureIconRenderer;
     }
 
     @Override

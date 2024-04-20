@@ -1,13 +1,15 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.client.WVRenderType;
+import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.Util;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -23,12 +25,12 @@ public abstract class TileLayer {
 
     public static final List<TileLayerRegistryEntry<?>> FACTORY_REGISTRY = Util.make(() -> {
         List<TileLayerRegistryEntry<?>> tileLayers = new ArrayList<>();
-        tileLayers.add(new TileLayerRegistryEntry<BiomeLayer>("biomes", 1, BiomeLayer::new, BiomeLayer::new));
-//        tileLayers.add(new TileLayerRegistryEntry<TopBlockMapLayer>("map", 1, TopBlockMapLayer::new, TopBlockMapLayer::new));
-//        tileLayers.add(new TileLayerRegistryEntry<HeightsLayer>("heights", 0.5F, HeightsLayer::new, HeightsLayer::new));
+        tileLayers.add(new TileLayerRegistryEntry<HeightsLayer>("heights", 0.5F, HeightsLayer::new, HeightsLayer::new, RenderType.NO_TRANSPARENCY, 0));
+        tileLayers.add(new TileLayerRegistryEntry<BiomeLayer>("biomes", 1, BiomeLayer::new, BiomeLayer::new, WVRenderType.DST_COLOR_SRC_ALPHA_TRANSPARENCY,5));
+        tileLayers.add(new TileLayerRegistryEntry<TopBlockMapLayer>("map", 1, TopBlockMapLayer::new, TopBlockMapLayer::new, RenderType.NO_TRANSPARENCY, 5));
 //        tileLayers.add(new TileLayerRegistryEntry<NoiseCaveLayer>("caves", 1, NoiseCaveLayer::new, NoiseCaveLayer::new));
-//        tileLayers.add(new TileLayerRegistryEntry<SlimeChunkLayer>("slime_chunks", 1, SlimeChunkLayer::new, SlimeChunkLayer::new));
-//        tileLayers.add(new TileLayerRegistryEntry<>("structures", 1, StructuresLayer::new, null));
+        tileLayers.add(new TileLayerRegistryEntry<SlimeChunkLayer>("slime_chunks", 1, SlimeChunkLayer::new, SlimeChunkLayer::new, RenderType.NO_TRANSPARENCY, 5));
+        tileLayers.add(new TileLayerRegistryEntry<>("structures", 1, StructuresLayer::new, null, RenderType.NO_TRANSPARENCY, 5));
         return tileLayers;
     });
     protected int sampleResolution;
@@ -47,7 +49,7 @@ public abstract class TileLayer {
         return Collections.emptyList();
     }
 
-    public void afterTilesRender(GuiGraphics guiGraphics, double opacity, int tileMinWorldX, int tileMinWorldZ) {
+    public void afterTilesRender(MultiBufferSource.BufferSource bufferSource, PoseStack stack, double opacity, int tileMinWorldX, int tileMinWorldZ, RenderTileContext tileContext) {
     }
 
     @Nullable
@@ -96,13 +98,7 @@ public abstract class TileLayer {
         TileLayer fromDisk(int size,  Path imagePath, Path dataPath, int sampleResolution) throws Exception;
     }
 
-    @FunctionalInterface
-    public interface Renderer {
-
-        void render(GuiGraphics graphics, int size, int id, float opacity);
-    }
-
-    public record TileLayerRegistryEntry<T extends TileLayer>(String name, float defaultOpacity, GenerationFactory<T> generationFactory, @Nullable DiskFactory diskFactory) {
+    public record TileLayerRegistryEntry<T extends TileLayer>(String name, float defaultOpacity, GenerationFactory<T> generationFactory, @Nullable DiskFactory diskFactory, RenderStateShard.TransparencyStateShard transparencyStateShard, int weight) {
     }
 }
 

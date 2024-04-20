@@ -48,27 +48,14 @@ public class NoiseCaveLayer extends TileLayer {
 
         int sampledSize = size / sampleResolution;
 
-        int[] image = new int[sampledSize * sampledSize];
+        int[] image = new int[size * size];
 
-        int[] data = new int[sampledSize * sampledSize];
+        int[] data = new int[size * size];
         Arrays.fill(data, -1);
 
-        if (lowerResolution != null) {
-            int previousSampledSize = size / lowerResolution.sampleResolution;
-
-            int scale = sampledSize / previousSampledSize;
-
-            for (int sampleX = 0; sampleX < previousSampledSize; sampleX++) {
-                for (int sampleZ = 0; sampleZ < previousSampledSize; sampleZ++) {
-                    int foundCaveBlocks = lowerResolution.foundCaveBlocks[sampleX + sampleZ * previousSampledSize];
-                    data[(sampleX * scale) + (sampleZ * scale) * sampledSize] = foundCaveBlocks;
-                }
-            }
-        }
-
         BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
-        for (int sampleX = 0; sampleX < sampledSize; sampleX++) {
-            for (int sampleZ = 0; sampleZ < sampledSize; sampleZ++) {
+        for (int sampleX = 0; sampleX < size; sampleX++) {
+            for (int sampleZ = 0; sampleZ < size; sampleZ++) {
                 if (Thread.currentThread().isInterrupted()) {
                     this.image = null;
                     this.foundCaveBlocks = null;

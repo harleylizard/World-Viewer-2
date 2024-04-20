@@ -3,13 +3,13 @@ package dev.corgitaco.worldviewer.client.tile.tilelayer;
 import dev.corgitaco.worldviewer.client.render.ColorUtils;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FastColor;
-import net.minecraft.world.level.ChunkPos;
 import org.jetbrains.annotations.Nullable;
 
 import javax.imageio.ImageIO;
@@ -32,40 +32,41 @@ public class SlimeChunkLayer extends TileLayer {
 
     public SlimeChunkLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable SlimeChunkLayer higherResolution) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks, higherResolution);
-        int dataSize = SectionPos.blockToSectionCoord(size);
 
-        boolean[] data = new boolean[dataSize * dataSize];
-        int[] image = new int[size * size];
+        boolean[] data = null;
 
-        for (int x = 0; x < dataSize; x++) {
-            for (int z = 0; z < dataSize; z++) {
-                int chunkX = SectionPos.blockToSectionCoord(tileWorldX) + x;
-                int chunkZ = SectionPos.blockToSectionCoord(tileWorldZ) + z;
+        int[] image = null;
 
-                sampledChunks.add(ChunkPos.asLong(chunkX, chunkZ));
-                if (tileManager.isSlimeChunk(chunkX, chunkZ)) {
-                    data[x + z * dataSize] = true;
-                    for (int xMove = 0; xMove < 16; xMove++) {
-                        for (int zMove = 0; zMove < 16; zMove++) {
-                            if (Thread.currentThread().isInterrupted()) {
-                                this.slimeChunkData = null;
-                                this.image = null;
-                                return;
-                            }
-                            if (xMove <= 1 || xMove >= 14 || zMove <= 1 || zMove >= 14) {
-                                int dataX = SectionPos.sectionToBlockCoord(x) + xMove;
-                                int dataZ = SectionPos.sectionToBlockCoord(z) + zMove;
-                                image[dataX + dataZ * size] = ColorUtils.ABGR.packABGR(255, 93, 190, 120);
-                            }
-                        }
+        BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
+        for (int sampleX = 0; sampleX < size; sampleX++) {
+            for (int sampleZ = 0; sampleZ < size; sampleZ++) {
+                if (Thread.currentThread().isInterrupted()) {
+                    this.slimeChunkData = null;
+                    this.image = null;
+                    return;
+                }
+                worldPos.set(tileWorldX + (sampleX * sampleResolution), 0, tileWorldZ + (sampleZ * sampleResolution));
+
+                int idx = sampleX + sampleZ * size;
+
+                if (tileManager.isSlimeChunk(SectionPos.blockToSectionCoord(worldPos.getX()), SectionPos.blockToSectionCoord(worldPos.getZ()))) {
+                    if (data == null) {
+                        data = new boolean[SectionPos.blockToSectionCoord(size) * SectionPos.blockToSectionCoord(size)];
                     }
+
+                    if (image == null) {
+                        image = new int[size * size];
+                    }
+
+                    image[idx] = ColorUtils.ABGR.packABGR(255, 93, 190, 120);
+
+
+                    data[SectionPos.blockToSectionCoord(sampleX) * SectionPos.blockToSectionCoord(sampleZ) * SectionPos.blockToSectionCoord(size)] = true;
                 }
             }
         }
         this.slimeChunkData = data;
         this.image = image;
-
-
     }
 
     public SlimeChunkLayer(int size, Path imagePath, Path dataPath, int sampleRes) throws Exception {
