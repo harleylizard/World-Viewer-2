@@ -1,21 +1,26 @@
 package dev.corgitaco.worldviewer.client.screen;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import dev.corgitaco.worldviewer.client.RegionGrid;
 import dev.corgitaco.worldviewer.client.StructureIconRenderer;
 import dev.corgitaco.worldviewer.client.render.ColorUtils;
 import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.client.tile.TileLayerRenderTileManager;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import dev.corgitaco.worldviewer.platform.ModPlatform;
+import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.FastColor;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 public class WorldScreenV3 extends Screen implements RenderTileContext {
@@ -28,6 +33,8 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
     private TileLayerRenderTileManager tileLayerRenderTileManager;
 
     private StructureIconRenderer structureIconRenderer;
+
+    private final Long2ObjectLinkedOpenHashMap<RegionGrid> grid = new Long2ObjectLinkedOpenHashMap<>();
 
 
     public WorldScreenV3(Component component) {
@@ -57,6 +64,12 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
         DataTileManager dataTileManager = new DataTileManager(ModPlatform.INSTANCE.configPath().resolve(String.valueOf(level.getSeed())), level.getChunkSource().getGenerator(), level.getChunkSource().getGenerator().getBiomeSource(), level, level.getSeed());
 
 
+        for (int regionX = this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.minX()); regionX <= this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.maxX()); regionX++) {
+            for (int regionZ = this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.minZ()); regionZ <= this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.maxZ()); regionZ++) {
+                this.grid.computeIfAbsent(ChunkPos.asLong(regionX, regionZ), key -> new RegionGrid(key, this.coordinateShiftManager));
+            }
+        }
+
         this.structureIconRenderer = new StructureIconRenderer(level);
         this.structureIconRenderer.init();
 
@@ -72,8 +85,12 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
 
         poseStack.translate(getScreenCenterX(), getScreenCenterZ(), 0);
         poseStack.translate(getOriginRenderOffsetX(), getOriginRenderOffsetZ(), 0);
-        this.tileLayerRenderTileManager.render(guiGraphics.bufferSource(), poseStack, mouseX, mouseY, partialTicks);
-        this.tileLayerRenderTileManager.renderLast(guiGraphics.bufferSource(), poseStack, mouseX, mouseY, partialTicks);
+        MultiBufferSource.BufferSource bufferSource = guiGraphics.bufferSource();
+        this.tileLayerRenderTileManager.render(bufferSource, poseStack, mouseX, mouseY, partialTicks);
+        this.tileLayerRenderTileManager.renderLast(bufferSource, poseStack, mouseX, mouseY, partialTicks);
+        for (Long2ObjectMap.Entry<RegionGrid> renderGridEntry : this.grid.long2ObjectEntrySet()) {
+            renderGridEntry.getValue().render(bufferSource, poseStack);
+        }
         poseStack.popPose();
 
         guiGraphics.drawString(Minecraft.getInstance().font, minecraft.fpsString, 0, 0, FastColor.ARGB32.color(255, 255, 255, 255));

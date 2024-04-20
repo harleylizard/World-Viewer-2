@@ -6,7 +6,7 @@ import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.client.tile.Tile;
 import net.minecraft.client.renderer.MultiBufferSource;
 
-public abstract class TileRegion<T extends Tile> implements AutoCloseable {
+public abstract class TileRegion<T extends Tile> implements Region {
 
     protected final CoordinateShiftManager coordinateShiftManager;
     private final long regionPos;
@@ -19,35 +19,18 @@ public abstract class TileRegion<T extends Tile> implements AutoCloseable {
         this.regionPos = regionPos;
     }
 
-    protected int getRenderX() {
-        return getRegionBlockX() >> this.coordinateShiftManager.scaleShift();
-    }
-
-    protected int getRenderY() {
-        return getRegionBlockZ() >> this.coordinateShiftManager.scaleShift();
-    }
-
-    public abstract void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack);
-
     public void renderLast(MultiBufferSource.BufferSource bufferSource, PoseStack stack, RenderTileContext renderTileContext) {}
 
 
     public abstract void insertTile(T layer);
 
-    public int getRegionBlockX() {
-        return this.coordinateShiftManager.getRegionWorldX(regionPos);
+    @Override
+    public long regionPos() {
+        return this.regionPos;
     }
 
-    public int getRegionBlockZ() {
-        return this.coordinateShiftManager.getRegionWorldZ(regionPos);
+    @Override
+    public CoordinateShiftManager coordinateShiftManager() {
+        return this.coordinateShiftManager;
     }
-
-    public int getRegionX() {
-        return this.coordinateShiftManager.getRegionX(regionPos);
-    }
-
-    public int getRegionZ() {
-        return this.coordinateShiftManager.getRegionZ(regionPos);
-    }
-
 }
