@@ -12,6 +12,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -72,7 +73,7 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
 
         for (int regionX = this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.minX()); regionX <= this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.maxX()); regionX++) {
             for (int regionZ = this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.minZ()); regionZ <= this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.maxZ()); regionZ++) {
-                this.grid.computeIfAbsent(ChunkPos.asLong(regionX, regionZ), key -> new RegionGrid(key, this.coordinateShiftManager));
+                this.grid.computeIfAbsent(ChunkPos.asLong(regionX, regionZ), key -> new RegionGrid(key, this.coordinateShiftManager, 2));
             }
         }
 
@@ -87,7 +88,7 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         PoseStack poseStack = guiGraphics.pose();
         poseStack.pushPose();
-        guiGraphics.fill(0, 0, width, height, ColorUtils.ARGB.packARGB(255, 0, 0,0));
+        guiGraphics.fill(0, 0, width, height, ColorUtils.ARGB.packARGB(255, 0, 0, 0));
 
         poseStack.translate(getScreenCenterX(), getScreenCenterZ(), 0);
         poseStack.translate(getOriginRenderOffsetX(), getOriginRenderOffsetZ(), 0);
@@ -97,6 +98,14 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
         for (Long2ObjectMap.Entry<RegionGrid> renderGridEntry : this.grid.long2ObjectEntrySet()) {
             renderGridEntry.getValue().render(bufferSource, poseStack);
         }
+
+        for (Long2ObjectMap.Entry<RegionGrid> renderGridEntry : this.grid.long2ObjectEntrySet()) {
+            renderGridEntry.getValue().renderCoords(bufferSource, poseStack, this.worldViewArea);
+        }
+
+
+        renderCoordinatess(bufferSource, poseStack, 1);
+
         this.tileLayerRenderTileManager.renderSprites(bufferSource, poseStack, mouseX, mouseY, partialTicks);
 
         poseStack.popPose();
@@ -106,8 +115,15 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
         if (minecraft.getFps() < 100) {
             String s = "";
         }
+
         guiGraphics.drawString(Minecraft.getInstance().font, minecraft.fpsString, 0, 0, FastColor.ARGB32.color(255, 255, 255, 255));
     }
+
+    public void renderCoordinatess(MultiBufferSource.BufferSource bufferSource, PoseStack stack, int scale) {
+
+
+    }
+
 
     private void renderToolTip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         BlockPos mouseWorldVec3 = getMouseWorldPos(mouseX, mouseY);
@@ -146,6 +162,7 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
     private int scaledScreenCenterX() {
         return getScreenCenterX() << this.coordinateShiftManager.scaleShift();
     }
+
     private int scaledScreenCenterZ() {
         return getScreenCenterZ() << this.coordinateShiftManager.scaleShift();
     }
