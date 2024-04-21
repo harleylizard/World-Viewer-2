@@ -89,7 +89,6 @@ public class TileLayerRenderTileManager implements AutoCloseable {
     }
 
     public void renderSprites(MultiBufferSource.BufferSource bufferSource, PoseStack stack, int mouseX, int mouseY, float partialTicks) {
-
         Int2ObjectMap<Pair<DynamicTexture, LongList>> toRender = new Int2ObjectOpenHashMap<>();
 
         for (Long2ObjectLinkedOpenHashMap<RenderTileLayerTileRegion> regionMap : this.regions) {

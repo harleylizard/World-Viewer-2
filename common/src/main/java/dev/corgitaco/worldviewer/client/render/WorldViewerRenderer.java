@@ -1,9 +1,9 @@
-package dev.corgitaco.worldviewer.client.screen;
+package dev.corgitaco.worldviewer.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.RegionGrid;
 import dev.corgitaco.worldviewer.client.StructureIconRenderer;
-import dev.corgitaco.worldviewer.client.render.ColorUtils;
+import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.client.tile.TileLayerRenderTileManager;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
@@ -12,26 +12,23 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.FastColor;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
-public class WorldScreenV3 extends Screen implements RenderTileContext {
+public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
 
+    private final int height;
+    private final int width;
     private BoundingBox worldViewArea;
 
     private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 1);
@@ -43,14 +40,12 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
 
     private final Long2ObjectLinkedOpenHashMap<RegionGrid> grid = new Long2ObjectLinkedOpenHashMap<>();
 
-
-    public WorldScreenV3(Component component) {
-        super(component);
+    public WorldViewerRenderer(int height, int width) {
+        this.height = height;
+        this.width = width;
     }
 
-    @Override
-    protected void init() {
-        super.init();
+    public void init() {
         this.origin.set(Minecraft.getInstance().player.blockPosition());
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
         ServerLevel level = server.getLevel(Minecraft.getInstance().level.dimension());
@@ -84,17 +79,19 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
         this.tileLayerRenderTileManager.init();
     }
 
-    @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        PoseStack poseStack = guiGraphics.pose();
+    public void tick() {
+        this.tileLayerRenderTileManager.tick();
+    }
+
+    public void render(MultiBufferSource.BufferSource bufferSource, PoseStack poseStack, int mouseX, int mouseY, float partialTicks) {
         poseStack.pushPose();
-        guiGraphics.fill(0, 0, width, height, ColorUtils.ARGB.packARGB(255, 0, 0, 0));
 
         poseStack.translate(getScreenCenterX(), getScreenCenterZ(), 0);
         poseStack.translate(getOriginRenderOffsetX(), getOriginRenderOffsetZ(), 0);
-        MultiBufferSource.BufferSource bufferSource = guiGraphics.bufferSource();
+
         this.tileLayerRenderTileManager.render(bufferSource, poseStack, mouseX, mouseY, partialTicks);
         this.tileLayerRenderTileManager.renderLast(bufferSource, poseStack, mouseX, mouseY, partialTicks);
+
         for (Long2ObjectMap.Entry<RegionGrid> renderGridEntry : this.grid.long2ObjectEntrySet()) {
             renderGridEntry.getValue().render(bufferSource, poseStack);
         }
@@ -106,13 +103,9 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
         this.tileLayerRenderTileManager.renderSprites(bufferSource, poseStack, mouseX, mouseY, partialTicks);
 
         poseStack.popPose();
-
-        renderToolTip(guiGraphics, mouseX, mouseY);
-
-        guiGraphics.drawString(Minecraft.getInstance().font, minecraft.fpsString, 0, 0, FastColor.ARGB32.color(255, 255, 255, 255));
     }
 
-    private void renderToolTip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    public List<Component> getToolTip(int mouseX, int mouseY) {
         BlockPos mouseWorldVec3 = getMouseWorldPos(mouseX, mouseY);
 
         List<Component> toolTip = new ArrayList<>();
@@ -121,8 +114,9 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
         toolTip.add(Component.literal("").withStyle(ChatFormatting.BOLD));
 
         toolTip.addAll(this.tileLayerRenderTileManager.toolTip(mouseX, mouseY, getMouseWorldPos(mouseX, mouseY)));
-        guiGraphics.renderTooltip(Minecraft.getInstance().font, toolTip, Optional.empty(), mouseX, mouseY);
+        return toolTip;
     }
+
 
     @NotNull
     private BlockPos getMouseWorldPos(double mouseX, double mouseY) {
@@ -132,9 +126,36 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
     }
 
     @Override
-    public void tick() {
-        super.tick();
-        this.tileLayerRenderTileManager.tick();
+    public void close() {
+        this.tileLayerRenderTileManager.close();
+        for (Long2ObjectMap.Entry<RegionGrid> regionGridEntry : this.grid.long2ObjectEntrySet()) {
+            regionGridEntry.getValue().close();
+        }
+    }
+
+    @Override
+    public CoordinateShiftManager coordinateShiftManager() {
+        return this.coordinateShiftManager;
+    }
+
+    @Override
+    public BoundingBox worldViewArea() {
+        return worldViewArea;
+    }
+
+    @Override
+    public StructureIconRenderer structureRenderer() {
+        return this.structureIconRenderer;
+    }
+
+    @Override
+    public int xTileRange() {
+        return getScreenXTileRange();
+    }
+
+    @Override
+    public int zTileRange() {
+        return getScreenZTileRange();
     }
 
     private int getScreenXTileRange() {
@@ -151,12 +172,6 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
 
     private int scaledScreenCenterZ() {
         return getScreenCenterZ() << this.coordinateShiftManager.scaleShift();
-    }
-
-    @Override
-    public void onClose() {
-        this.tileLayerRenderTileManager.close();
-        super.onClose();
     }
 
     public double localXFromWorldX(double worldX) {
@@ -186,31 +201,5 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
 
     private int getOriginRenderOffset(int origin) {
         return -(origin >> this.coordinateShiftManager.scaleShift());
-    }
-
-
-    @Override
-    public CoordinateShiftManager coordinateShiftManager() {
-        return this.coordinateShiftManager;
-    }
-
-    @Override
-    public BoundingBox worldViewArea() {
-        return worldViewArea;
-    }
-
-    @Override
-    public StructureIconRenderer structureRenderer() {
-        return this.structureIconRenderer;
-    }
-
-    @Override
-    public int xTileRange() {
-        return getScreenXTileRange();
-    }
-
-    @Override
-    public int zTileRange() {
-        return getScreenZTileRange();
     }
 }
