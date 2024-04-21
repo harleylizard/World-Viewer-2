@@ -54,6 +54,8 @@ public class TileLayerRenderTileManager implements AutoCloseable {
     private final CoordinateShiftManager coordinateShiftManager;
     private final BlockPos origin;
 
+    private long lastOriginTilePos = -1;
+
     public TileLayerRenderTileManager(BlockPos origin, RenderTileContext renderTileContext, DataTileManager dataTileManager) {
         this.origin = origin;
         this.renderTileContext = renderTileContext;
@@ -63,6 +65,7 @@ public class TileLayerRenderTileManager implements AutoCloseable {
 
     public void init() {
         fillRegions();
+        this.lastOriginTilePos = ChunkPos.asLong(coordinateShiftManager.getTileCoordFromBlockCoord(origin.getX()), coordinateShiftManager.getTileCoordFromBlockCoord(origin.getZ()));
     }
 
     public void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack, int mouseX, int mouseY, float partialTicks) {
@@ -88,7 +91,7 @@ public class TileLayerRenderTileManager implements AutoCloseable {
         }
     }
 
-    public void renderSprites(MultiBufferSource.BufferSource bufferSource, PoseStack stack, int mouseX, int mouseY, float partialTicks) {
+    public void renderSprites(MultiBufferSource.BufferSource bufferSource, PoseStack stack) {
         Int2ObjectMap<Pair<DynamicTexture, LongList>> toRender = new Int2ObjectOpenHashMap<>();
 
         for (Long2ObjectLinkedOpenHashMap<RenderTileLayerTileRegion> regionMap : this.regions) {
@@ -133,6 +136,7 @@ public class TileLayerRenderTileManager implements AutoCloseable {
 
     public void tick() {
         int tasks = 0;
+        lastOriginTilePos = getCurrentTilePos();
 
         while (!tileSubmissionsQueue.isEmpty() && tasks <= 100) {
             Runnable poll = tileSubmissionsQueue.poll().value();
@@ -141,7 +145,56 @@ public class TileLayerRenderTileManager implements AutoCloseable {
         }
     }
 
-    private void fillRegions() {
+    public void cull() {
+        if (lastOriginTilePos == getCurrentTilePos()) {
+            return;
+        }
+
+        for (int i = 0; i < TileLayer.FACTORY_REGISTRY.size(); i++) {
+            for (Long2ObjectMap.Entry<CompletableFuture<SingleScreenTileLayer>> completableFutureEntry : this.trackedTileLayerFutures[i].long2ObjectEntrySet()) {
+                long longKey = completableFutureEntry.getLongKey();
+
+                int tileX = ChunkPos.getX(longKey);
+                int tileZ = ChunkPos.getZ(longKey);
+
+                int worldX = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileX);
+
+                int worldZ = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileZ);
+
+                if (!this.renderTileContext.worldViewArea().intersects(worldX, worldZ, worldX + this.coordinateShiftManager.getTileBlockSize(), worldZ + this.coordinateShiftManager.getTileBlockSize())) {
+                    completableFutureEntry.getValue().cancel(true);
+                }
+            }
+
+            for (Long2ObjectMap.Entry<RenderTileLayerTileRegion> entry : this.regions[i].long2ObjectEntrySet()) {
+                long longKey = entry.getLongKey();
+
+                int regionX = ChunkPos.getX(longKey);
+                int regionZ = ChunkPos.getZ(longKey);
+
+                int worldX = this.coordinateShiftManager.getBlockCoordFromRegionCoord(regionX);
+
+                int worldZ = this.coordinateShiftManager.getBlockCoordFromRegionCoord(regionZ);
+
+                if (!this.renderTileContext.worldViewArea().intersects(worldX, worldZ, worldX + this.coordinateShiftManager.getRegionBlockSize(), worldZ + this.coordinateShiftManager.getRegionBlockSize())) {
+                    int finalI = i;
+                    this.tileSubmissionsQueue.add(new WeightedEntry<>(() -> {
+                        RenderTileLayerTileRegion value = entry.getValue();
+                        value.close();
+                        this.regions[finalI].remove(value.regionPos());
+                    }, -1));
+                }
+            }
+        }
+    }
+
+
+
+
+    public void fillRegions() {
+        if (lastOriginTilePos == getCurrentTilePos()) {
+            return;
+        }
         int slices = 360;
         double sliceSize = Mth.TWO_PI / slices;
 
@@ -178,76 +231,82 @@ public class TileLayerRenderTileManager implements AutoCloseable {
 
                         int finalLayerIdx = layerIdx;
                         TileLayer.TileLayerRegistryEntry<?> tileLayerRegistryEntry = TileLayer.FACTORY_REGISTRY.get(finalLayerIdx);
+                        int regionX = this.coordinateShiftManager.getRegionCoordFromBlockCoord(worldTileX);
+                        int regionZ = this.coordinateShiftManager.getRegionCoordFromBlockCoord(worldTileZ);
 
-                        trackedTileLayerFutures[layerIdx].computeIfAbsent(tilePackedPos, key ->
-                                CompletableFuture.supplyAsync(() -> {
-                                    int tileMinBlockX = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileXCoord);
-                                    int tileMinBlockZ = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileZCoord);
+                        RenderTileLayerTileRegion region = regions[layerIdx].get(ChunkPos.asLong(regionX, regionZ));
+                        if (region == null || !region.hasTile(worldTileX, worldTileZ)) {
 
-                                    mutableBlockPos.set(tileMinBlockX, 0, tileMinBlockZ);
-                                    LongOpenHashSet sampledDataChunks = new LongOpenHashSet();
+                            trackedTileLayerFutures[layerIdx].computeIfAbsent(tilePackedPos, key ->
+                                    CompletableFuture.supplyAsync(() -> {
+                                        int tileMinBlockX = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileXCoord);
+                                        int tileMinBlockZ = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileZCoord);
 
-                                    SingleScreenTileLayer singleScreenTileLayer = new SingleScreenTileLayer(
-                                            tileLayerRegistryEntry.generationFactory().make(
-                                                    dataTileManager,
-                                                    63,
-                                                    tileMinBlockX,
-                                                    tileMinBlockZ,
-                                                    this.coordinateShiftManager.getTileImageSize(),
-                                                    getSampleResolution(),
-                                                    sampledDataChunks,
-                                                    null
-                                            ),
-                                            tileMinBlockX,
-                                            tileMinBlockZ,
-                                            this.coordinateShiftManager.getTileBlockSize());
-                                    for (Long sampledDataChunk : sampledDataChunks) {
-                                        this.dataTileManager.unloadTile(sampledDataChunk);
-                                    }
+                                        mutableBlockPos.set(tileMinBlockX, 0, tileMinBlockZ);
+                                        LongOpenHashSet sampledDataChunks = new LongOpenHashSet();
 
-                                    return singleScreenTileLayer;
-                                }, runnable -> executor.execute(new WeightedRunnable() { // Dirty hack to get prioritized runnables in our executor.
-                                    @Override
-                                    public int priority() {
-                                        return ((tileLayerRegistryEntry.weight() * 100000) * (blockSize / origin.distManhattan(new BlockPos(worldTileX, 0, worldTileZ))));
-                                    }
-
-                                    @Override
-                                    public void run() {
-                                        runnable.run();
-                                    }
-                                })).whenComplete((singleScreenTileLayer, throwable) -> {
-                                    if (throwable != null) {
-                                        throwable.printStackTrace();
-                                    }
-
-                                    this.tileSubmissionsQueue.add(new WeightedEntry<>(() -> {
-
-                                        int minTileWorldX = singleScreenTileLayer.getMinTileWorldX();
-                                        int minTileWorldZ = singleScreenTileLayer.getMinTileWorldZ();
-
-                                        int regionX = this.coordinateShiftManager.getRegionCoordFromBlockCoord(minTileWorldX);
-                                        int regionZ = this.coordinateShiftManager.getRegionCoordFromBlockCoord(minTileWorldZ);
-
-
-                                        int tileX = this.coordinateShiftManager.getTileCoordFromBlockCoord(minTileWorldX);
-                                        int tileZ = this.coordinateShiftManager.getTileCoordFromBlockCoord(minTileWorldZ);
-
-                                        long regionPos = ChunkPos.asLong(regionX, regionZ);
-
-                                        if (singleScreenTileLayer.image() != null) {
-                                            WhiteBackgroundTileRegion whiteBackgroundTileRegion = this.whiteBackGroundRegions.computeIfAbsent(regionPos, regionKey -> new WhiteBackgroundTileRegion(this.coordinateShiftManager, regionKey));
-
-                                            whiteBackgroundTileRegion.insertTile(new WorldCoordSquare(minTileWorldX, minTileWorldZ, singleScreenTileLayer.getMaxTileWorldX(), singleScreenTileLayer.getMaxTileWorldZ()));
+                                        SingleScreenTileLayer singleScreenTileLayer = new SingleScreenTileLayer(
+                                                tileLayerRegistryEntry.generationFactory().make(
+                                                        dataTileManager,
+                                                        63,
+                                                        tileMinBlockX,
+                                                        tileMinBlockZ,
+                                                        this.coordinateShiftManager.getTileImageSize(),
+                                                        getSampleResolution(),
+                                                        sampledDataChunks,
+                                                        null
+                                                ),
+                                                tileMinBlockX,
+                                                tileMinBlockZ,
+                                                this.coordinateShiftManager.getTileBlockSize());
+                                        for (Long sampledDataChunk : sampledDataChunks) {
+                                            this.dataTileManager.unloadTile(sampledDataChunk);
                                         }
 
-                                        RenderTileLayerTileRegion tileLayerRenderRegion = regions[finalLayerIdx].computeIfAbsent(regionPos, regionKey -> new RenderTileLayerTileRegion(this.coordinateShiftManager, regionKey, tileLayerRegistryEntry.transparencyStateShard()));
+                                        return singleScreenTileLayer;
+                                    }, runnable -> executor.execute(new WeightedRunnable() { // Dirty hack to get prioritized runnables in our executor.
+                                        @Override
+                                        public int priority() {
+                                            return ((tileLayerRegistryEntry.weight() * 100000) * (blockSize / origin.distManhattan(new BlockPos(worldTileX, 0, worldTileZ))));
+                                        }
 
-                                        tileLayerRenderRegion.insertTile(singleScreenTileLayer);
-                                        this.trackedTileLayerFutures[finalLayerIdx].remove(ChunkPos.asLong(tileX, tileZ));
-                                    }, tileLayerRegistryEntry.weight()));
-                                })
-                        );
+                                        @Override
+                                        public void run() {
+                                            runnable.run();
+                                        }
+                                    })).whenComplete((singleScreenTileLayer, throwable) -> {
+                                        if (throwable != null) {
+                                            throwable.printStackTrace();
+                                        }
+
+                                        this.tileSubmissionsQueue.add(new WeightedEntry<>(() -> {
+
+                                            int minTileWorldX = singleScreenTileLayer.getMinTileWorldX();
+                                            int minTileWorldZ = singleScreenTileLayer.getMinTileWorldZ();
+
+                                            int tileLayerRegionX = this.coordinateShiftManager.getRegionCoordFromBlockCoord(minTileWorldX);
+                                            int tileLayerRegionZ = this.coordinateShiftManager.getRegionCoordFromBlockCoord(minTileWorldZ);
+
+
+                                            int tileX = this.coordinateShiftManager.getTileCoordFromBlockCoord(minTileWorldX);
+                                            int tileZ = this.coordinateShiftManager.getTileCoordFromBlockCoord(minTileWorldZ);
+
+                                            long regionPos = ChunkPos.asLong(tileLayerRegionX, tileLayerRegionZ);
+
+                                            if (singleScreenTileLayer.image() != null) {
+                                                WhiteBackgroundTileRegion whiteBackgroundTileRegion = this.whiteBackGroundRegions.computeIfAbsent(regionPos, regionKey -> new WhiteBackgroundTileRegion(this.coordinateShiftManager, regionKey));
+
+                                                whiteBackgroundTileRegion.insertTile(new WorldCoordSquare(minTileWorldX, minTileWorldZ, singleScreenTileLayer.getMaxTileWorldX(), singleScreenTileLayer.getMaxTileWorldZ()));
+                                            }
+
+                                            RenderTileLayerTileRegion tileLayerRenderRegion = regions[finalLayerIdx].computeIfAbsent(regionPos, regionKey -> new RenderTileLayerTileRegion(this.coordinateShiftManager, regionKey, tileLayerRegistryEntry.transparencyStateShard()));
+
+                                            tileLayerRenderRegion.insertTile(singleScreenTileLayer);
+                                            this.trackedTileLayerFutures[finalLayerIdx].remove(ChunkPos.asLong(tileX, tileZ));
+                                        }, tileLayerRegistryEntry.weight()));
+                                    })
+                            );
+                        }
                     }
                 }
             }
@@ -293,6 +352,10 @@ public class TileLayerRenderTileManager implements AutoCloseable {
 
             value.close();
         }
+    }
+
+    private long getCurrentTilePos() {
+        return ChunkPos.asLong(this.coordinateShiftManager.getTileCoordFromBlockCoord(this.origin.getX()), this.coordinateShiftManager.getTileCoordFromBlockCoord(this.origin.getZ()));
     }
 
 

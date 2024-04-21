@@ -12,6 +12,7 @@
     "dev.MinecraftServerFastSpawnMixin"
   ],
   "client": [
+    "GuiMixin",
     "KeyMappingAccess",
     "MixinGameRenderer",
     "MixinLevelRenderer",

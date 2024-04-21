@@ -39,6 +39,12 @@ public abstract class TileRegion<T extends Tile> implements Region {
         return localTileXIdx + localTileZIdx * tileImageSize;
     }
 
+
+    public boolean hasTile(int worldX, int worldZ) {
+        return hasTile(getTileIdx(worldX, worldZ));
+    }
+    public abstract boolean hasTile(int idx);
+
     @Override
     public long regionPos() {
         return this.regionPos;

@@ -60,6 +60,10 @@ public class RenderTileLayerTileRegion extends TileRegion<SingleScreenTileLayer>
         }
     }
 
+    @Override
+    public boolean hasTile(int idx) {
+        return this.layers[idx] != null;
+    }
 
     public void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack) {
         int renderX = getRenderX();

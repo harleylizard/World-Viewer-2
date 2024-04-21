@@ -51,18 +51,7 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
         ServerLevel level = server.getLevel(Minecraft.getInstance().level.dimension());
 
 
-        this.worldViewArea = BoundingBox.fromCorners(
-                new Vec3i(
-                        (int) Math.max(level.getWorldBorder().getMinX(), this.origin.getX() - this.coordinateShiftManager.getBlockCoordFromTileCoord(getScreenXTileRange()) - 1),
-                        level.getMinBuildHeight(),
-                        (int) Math.max(level.getWorldBorder().getMinZ(), this.origin.getZ() - this.coordinateShiftManager.getBlockCoordFromTileCoord(getScreenZTileRange()) - 1)
-                ),
-                new Vec3i(
-                        (int) Math.min(level.getWorldBorder().getMaxX(), this.origin.getX() + this.coordinateShiftManager.getBlockCoordFromTileCoord(getScreenXTileRange()) + 1),
-                        level.getMaxBuildHeight(),
-                        (int) Math.min(level.getWorldBorder().getMaxZ(), this.origin.getZ() + this.coordinateShiftManager.getBlockCoordFromTileCoord(getScreenZTileRange()) + 1)
-                )
-        );
+        updateWorldViewArea();
         DataTileManager dataTileManager = new DataTileManager(ModPlatform.INSTANCE.configPath().resolve(String.valueOf(level.getSeed())), level.getChunkSource().getGenerator(), level.getChunkSource().getGenerator().getBiomeSource(), level, level.getSeed());
 
 
@@ -79,7 +68,29 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
         this.tileLayerRenderTileManager.init();
     }
 
+    private void updateWorldViewArea() {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        ServerLevel level = server.getLevel(Minecraft.getInstance().level.dimension());
+        this.worldViewArea = BoundingBox.fromCorners(
+                new Vec3i(
+                        (int) Math.max(level.getWorldBorder().getMinX(), this.origin.getX() - this.coordinateShiftManager.getBlockCoordFromTileCoord(getScreenXTileRange()) - 1),
+                        level.getMinBuildHeight(),
+                        (int) Math.max(level.getWorldBorder().getMinZ(), this.origin.getZ() - this.coordinateShiftManager.getBlockCoordFromTileCoord(getScreenZTileRange()) - 1)
+                ),
+                new Vec3i(
+                        (int) Math.min(level.getWorldBorder().getMaxX(), this.origin.getX() + this.coordinateShiftManager.getBlockCoordFromTileCoord(getScreenXTileRange()) + 1),
+                        level.getMaxBuildHeight(),
+                        (int) Math.min(level.getWorldBorder().getMaxZ(), this.origin.getZ() + this.coordinateShiftManager.getBlockCoordFromTileCoord(getScreenZTileRange()) + 1)
+                )
+        );
+    }
+
     public void tick() {
+        this.origin.set(Minecraft.getInstance().player.blockPosition());
+        updateWorldViewArea();
+        this.tileLayerRenderTileManager.cull();
+        this.tileLayerRenderTileManager.fillRegions();
+
         this.tileLayerRenderTileManager.tick();
     }
 
@@ -100,7 +111,7 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
             renderGridEntry.getValue().renderCoords(bufferSource, poseStack, this.worldViewArea);
         }
 
-        this.tileLayerRenderTileManager.renderSprites(bufferSource, poseStack, mouseX, mouseY, partialTicks);
+        this.tileLayerRenderTileManager.renderSprites(bufferSource, poseStack);
 
         poseStack.popPose();
     }

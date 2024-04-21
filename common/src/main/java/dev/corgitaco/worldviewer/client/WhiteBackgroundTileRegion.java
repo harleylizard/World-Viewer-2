@@ -50,6 +50,11 @@ public class WhiteBackgroundTileRegion extends TileRegion<WorldCoordSquare> {
     }
 
     @Override
+    public boolean hasTile(int idx) {
+        return true;
+    }
+
+    @Override
     public void close() {
         this.texture.close();
     }
