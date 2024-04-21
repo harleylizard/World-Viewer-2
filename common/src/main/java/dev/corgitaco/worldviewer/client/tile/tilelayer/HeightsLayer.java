@@ -1,9 +1,5 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
-import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import dev.corgitaco.worldviewer.client.ClientUtil;
-import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
@@ -19,7 +15,6 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
 import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.io.IOException;
@@ -114,8 +109,8 @@ public class HeightsLayer extends TileLayer {
     }
 
     @Override
-    public @Nullable List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
-        int y = heightsData[(mouseTileLocalX / sampleResolution) + (mouseTileLocalY / sampleResolution) * ((int) Math.sqrt(this.heightsData.length - 1))];
+    public @Nullable List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY, int mouseTileImageLocalX, int mouseTileImageLocalY) {
+        int y = heightsData[(mouseTileImageLocalX) + (mouseTileImageLocalX) * ((int) Math.sqrt(this.heightsData.length))];
 
         return Collections.singletonList(Component.literal("Ocean Floor Height: " + y));
     }

@@ -1,27 +1,35 @@
 package dev.corgitaco.worldviewer.client.tile;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
-import dev.corgitaco.worldviewer.client.RenderTileLayerTileRegion;
-import dev.corgitaco.worldviewer.client.WhiteBackgroundTileRegion;
-import dev.corgitaco.worldviewer.client.WorldCoordSquare;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.datafixers.util.Pair;
+import dev.corgitaco.worldviewer.client.*;
 import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import dev.corgitaco.worldviewer.client.tile.tilelayer.TileLayer;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
-import dev.corgitaco.worldviewer.util.WeightedRunnable;
 import dev.corgitaco.worldviewer.util.WeightedEntry;
-import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import dev.corgitaco.worldviewer.util.WeightedRunnable;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.*;
 import net.minecraft.Util;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.*;
 
 public class TileLayerRenderTileManager implements AutoCloseable {
@@ -80,6 +88,50 @@ public class TileLayerRenderTileManager implements AutoCloseable {
         }
     }
 
+    public void renderSprites(MultiBufferSource.BufferSource bufferSource, PoseStack stack, int mouseX, int mouseY, float partialTicks) {
+
+        Int2ObjectMap<Pair<DynamicTexture, LongList>> toRender = new Int2ObjectOpenHashMap<>();
+
+        for (Long2ObjectLinkedOpenHashMap<RenderTileLayerTileRegion> regionMap : this.regions) {
+            for (Long2ObjectMap.Entry<RenderTileLayerTileRegion> tileRenderRegionEntry : regionMap.long2ObjectEntrySet()) {
+                RenderTileLayerTileRegion renderRegion = tileRenderRegionEntry.getValue();
+                for (Long2ObjectMap.Entry<DynamicTexture> idGrabber : renderRegion.spriteRenderer(renderTileContext).long2ObjectEntrySet()) {
+                    DynamicTexture dynamicTexture = idGrabber.getValue();
+
+                    toRender.computeIfAbsent(dynamicTexture.getId(), key -> Pair.of(dynamicTexture, new LongArrayList())).getSecond().add(idGrabber.getLongKey());
+                }
+            }
+        }
+
+
+        for (Int2ObjectMap.Entry<Pair<DynamicTexture, LongList>> pairEntry : toRender.int2ObjectEntrySet()) {
+            VertexConsumer buffer = bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(pairEntry.getIntKey(), RenderType.NO_TRANSPARENCY));
+            NativeImage pixels = pairEntry.getValue().getFirst().getPixels();
+
+
+            pairEntry.getValue().getSecond().forEach(packedBlockPos -> {
+                int renderX = (ChunkPos.getX(packedBlockPos) >> coordinateShiftManager.scaleShift()) - (pixels.getWidth() / 2);
+                int renderY = (ChunkPos.getZ(packedBlockPos) >> coordinateShiftManager.scaleShift()) - (pixels.getHeight() / 2);
+                ClientUtil.blit(buffer,
+                        stack,
+                        1,
+                        renderX,
+                        renderY,
+                        0F,
+                        0F,
+                        pixels.getWidth(),
+                        pixels.getHeight(),
+                        pixels.getWidth(),
+                        pixels.getHeight()
+                );
+            });
+
+
+        }
+
+
+    }
+
     public void tick() {
         int tasks = 0;
 
@@ -87,7 +139,6 @@ public class TileLayerRenderTileManager implements AutoCloseable {
             Runnable poll = tileSubmissionsQueue.poll().value();
             poll.run();
             tasks++;
-
         }
     }
 
@@ -128,14 +179,16 @@ public class TileLayerRenderTileManager implements AutoCloseable {
 
                         int finalLayerIdx = layerIdx;
                         TileLayer.TileLayerRegistryEntry<?> tileLayerRegistryEntry = TileLayer.FACTORY_REGISTRY.get(finalLayerIdx);
+
                         trackedTileLayerFutures[layerIdx].computeIfAbsent(tilePackedPos, key ->
                                 CompletableFuture.supplyAsync(() -> {
                                     int tileMinBlockX = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileXCoord);
                                     int tileMinBlockZ = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileZCoord);
 
                                     mutableBlockPos.set(tileMinBlockX, 0, tileMinBlockZ);
+                                    LongOpenHashSet sampledDataChunks = new LongOpenHashSet();
 
-                                    return new SingleScreenTileLayer(
+                                    SingleScreenTileLayer singleScreenTileLayer = new SingleScreenTileLayer(
                                             tileLayerRegistryEntry.generationFactory().make(
                                                     dataTileManager,
                                                     63,
@@ -143,17 +196,21 @@ public class TileLayerRenderTileManager implements AutoCloseable {
                                                     tileMinBlockZ,
                                                     this.coordinateShiftManager.getTileImageSize(),
                                                     getSampleResolution(),
-                                                    new LongOpenHashSet(),
+                                                    sampledDataChunks,
                                                     null
                                             ),
                                             tileMinBlockX,
                                             tileMinBlockZ,
                                             this.coordinateShiftManager.getTileBlockSize());
+                                    for (Long sampledDataChunk : sampledDataChunks) {
+                                        this.dataTileManager.unloadTile(sampledDataChunk);
+                                    }
 
+                                    return singleScreenTileLayer;
                                 }, runnable -> executor.execute(new WeightedRunnable() { // Dirty hack to get prioritized runnables in our executor.
                                     @Override
                                     public int priority() {
-                                        return  ((tileLayerRegistryEntry.weight() * 100000) * (blockSize / origin.distManhattan(new BlockPos(worldTileX, 0, worldTileZ))));
+                                        return ((tileLayerRegistryEntry.weight() * 100000) * (blockSize / origin.distManhattan(new BlockPos(worldTileX, 0, worldTileZ))));
                                     }
 
                                     @Override
@@ -198,6 +255,25 @@ public class TileLayerRenderTileManager implements AutoCloseable {
         }
 
     }
+
+    public Collection<Component> toolTip(int mouseX, int mouseY, BlockPos mouseWorldPos) {
+        int mouseWorldX = mouseWorldPos.getX();
+        int mouseWorldZ = mouseWorldPos.getZ();
+        long mouseRegion = ChunkPos.asLong(this.coordinateShiftManager.getRegionCoordFromBlockCoord(mouseWorldPos.getX()), this.coordinateShiftManager.getRegionCoordFromBlockCoord(mouseWorldPos.getZ()));
+
+        List<Component> toolTip = new ArrayList<>();
+
+        for (int i = 0; i < this.regions.length; i++) {
+            RenderTileLayerTileRegion renderTileLayerTileRegion = this.regions[i].get(mouseRegion);
+            if (renderTileLayerTileRegion != null) {
+                toolTip.add(Component.literal("\"" + TileLayer.FACTORY_REGISTRY.get(i).name() + "\" " + " layer").withStyle(Style.EMPTY.withBold(true).withUnderlined(true)));
+                toolTip.addAll(renderTileLayerTileRegion.toolTip(mouseX, mouseY, mouseWorldX, mouseWorldZ));
+            }
+        }
+
+        return toolTip;
+    }
+
 
     private int getSampleResolution() {
         return 1 << this.coordinateShiftManager.scaleShift();

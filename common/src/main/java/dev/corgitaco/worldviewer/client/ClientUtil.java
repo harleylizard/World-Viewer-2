@@ -1,7 +1,6 @@
 package dev.corgitaco.worldviewer.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.corgitaco.worldviewer.mixin.KeyMappingAccess;

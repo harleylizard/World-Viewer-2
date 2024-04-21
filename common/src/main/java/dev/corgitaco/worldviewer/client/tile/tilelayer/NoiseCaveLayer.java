@@ -1,12 +1,11 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
-import com.mojang.blaze3d.platform.NativeImage;
-import dev.corgitaco.worldviewer.client.ClientUtil;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.FastColor;
@@ -20,13 +19,14 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
 import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class NoiseCaveLayer extends TileLayer {
 
@@ -131,6 +131,13 @@ public class NoiseCaveLayer extends TileLayer {
     @Override
     public @Nullable int[] image() {
         return this.image;
+    }
+
+    @Override
+    public List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY, int mouseTileImageLocalX, int mouseTileImageLocalY) {
+        int caveBlocks = foundCaveBlocks[(mouseTileImageLocalX) + (mouseTileImageLocalX) * ((int) Math.sqrt(this.foundCaveBlocks.length))];
+
+        return Collections.singletonList(Component.literal("Cave blocks: " + caveBlocks));
     }
 
     @Override

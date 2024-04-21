@@ -1,7 +1,5 @@
 package dev.corgitaco.worldviewer.client.screen;
 
-import net.minecraft.world.level.ChunkPos;
-
 public record CoordinateShiftManager(int shift, int scaleShift) {
 
 

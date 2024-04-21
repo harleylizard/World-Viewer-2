@@ -24,6 +24,21 @@ public abstract class TileRegion<T extends Tile> implements Region {
 
     public abstract void insertTile(T layer);
 
+
+    protected int getTileIdx(int worldX, int worldZ) {
+        int regionWorldX = getRegionBlockX();
+        int regionWorldZ = getRegionBlockZ();
+
+        int localBlockX =  worldX - regionWorldX;
+        int localBlockZ =  worldZ - regionWorldZ;
+
+        int localTileXIdx = this.coordinateShiftManager.getTileCoordFromBlockCoord(localBlockX);
+        int localTileZIdx = this.coordinateShiftManager.getTileCoordFromBlockCoord(localBlockZ);
+
+        int tileImageSize = this.coordinateShiftManager.getTileImageSize();
+        return localTileXIdx + localTileZIdx * tileImageSize;
+    }
+
     @Override
     public long regionPos() {
         return this.regionPos;

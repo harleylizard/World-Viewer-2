@@ -3,14 +3,16 @@ package dev.corgitaco.worldviewer.client.tile.tilelayer;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.ClientUtil;
-import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.Util;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
@@ -44,13 +46,17 @@ public abstract class TileLayer {
         this.sampleResolution = sampleResolution;
     }
 
-    @Nullable
-    public List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
+    public List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY, int mouseTileImageLocalX, int mouseTileImageLocalY) {
         return Collections.emptyList();
     }
 
     public void afterTilesRender(MultiBufferSource.BufferSource bufferSource, PoseStack stack, double opacity, int tileMinWorldX, int tileMinWorldZ, RenderTileContext tileContext) {
     }
+
+    public Long2ObjectMap<DynamicTexture> spriteRenderer(RenderTileContext renderTileContext) {
+        return Long2ObjectMaps.emptyMap();
+    }
+
 
     @Nullable
     public abstract int[] image();

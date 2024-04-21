@@ -4,8 +4,11 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.client.tile.SingleScreenTileLayer;
+import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
@@ -74,8 +77,29 @@ public class RenderTileLayerTileRegion extends TileRegion<SingleScreenTileLayer>
         }
     }
 
-    public Collection<Component> toolTip(MultiBufferSource.BufferSource bufferSource, PoseStack stack, double mouseWorldX, double mouseWorldZ) {
-        return Collections.emptyList(); // TODO
+    public Long2ObjectMap<DynamicTexture> spriteRenderer(RenderTileContext renderTileContext) {
+        Long2ObjectMap<DynamicTexture> spriteRenderers = new Long2ObjectLinkedOpenHashMap<>();
+
+        for (SingleScreenTileLayer layer : this.layers) {
+            if (layer != null) {
+                spriteRenderers.putAll(layer.spriteRenderer(renderTileContext));
+            }
+        }
+
+        return spriteRenderers;
+    }
+
+    public Collection<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ) {
+        int idx = getTileIdx(mouseWorldX, mouseWorldZ);
+
+        @Nullable SingleScreenTileLayer layer = layers[idx];
+        if (layer != null) {
+            int mouseTileLocalX = (mouseWorldX - layer.getMinTileWorldX());
+            int mouseTileLocalY = (mouseWorldZ - layer.getMinTileWorldZ());
+            return layer.toolTip(mouseScreenX, mouseScreenY, mouseWorldX, mouseWorldZ, mouseTileLocalX, mouseTileLocalY, mouseTileLocalX >> this.coordinateShiftManager.scaleShift(), mouseTileLocalY >> this.coordinateShiftManager.scaleShift());
+        }
+
+        return Collections.emptyList();
     }
 
 

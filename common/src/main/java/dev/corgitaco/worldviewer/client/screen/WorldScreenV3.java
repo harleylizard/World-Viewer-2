@@ -10,6 +10,7 @@ import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import dev.corgitaco.worldviewer.platform.ModPlatform;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -22,12 +23,17 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.FastColor;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 public class WorldScreenV3 extends Screen implements RenderTileContext {
 
     private BoundingBox worldViewArea;
 
-    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 2);
+    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 1);
     private final BlockPos.MutableBlockPos origin = new BlockPos.MutableBlockPos();
 
     private TileLayerRenderTileManager tileLayerRenderTileManager;
@@ -91,9 +97,36 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
         for (Long2ObjectMap.Entry<RegionGrid> renderGridEntry : this.grid.long2ObjectEntrySet()) {
             renderGridEntry.getValue().render(bufferSource, poseStack);
         }
+        this.tileLayerRenderTileManager.renderSprites(bufferSource, poseStack, mouseX, mouseY, partialTicks);
+
         poseStack.popPose();
 
+        renderToolTip(guiGraphics, mouseX, mouseY);
+
+        if (minecraft.getFps() < 100) {
+            String s = "";
+        }
         guiGraphics.drawString(Minecraft.getInstance().font, minecraft.fpsString, 0, 0, FastColor.ARGB32.color(255, 255, 255, 255));
+    }
+
+    private void renderToolTip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        BlockPos mouseWorldVec3 = getMouseWorldPos(mouseX, mouseY);
+
+        List<Component> toolTip = new ArrayList<>();
+
+        toolTip.add(Component.literal("x=%s, z=%s".formatted(mouseWorldVec3.getX(), mouseWorldVec3.getZ())).withStyle(ChatFormatting.BOLD));
+        toolTip.add(Component.literal("").withStyle(ChatFormatting.BOLD));
+
+        toolTip.addAll(this.tileLayerRenderTileManager.toolTip(mouseX, mouseY, getMouseWorldPos(mouseX, mouseY)));
+
+        guiGraphics.renderTooltip(Minecraft.getInstance().font, toolTip, Optional.empty(), mouseX, mouseY);
+    }
+
+    @NotNull
+    private BlockPos getMouseWorldPos(double mouseX, double mouseY) {
+        int mouseWorldX = this.origin.getX() + (((int) mouseX - getScreenCenterX()) << this.coordinateShiftManager.scaleShift());
+        int mouseWorldZ = this.origin.getZ() + (((int) mouseY - getScreenCenterZ()) << this.coordinateShiftManager.scaleShift());
+        return new BlockPos(mouseWorldX, 0, mouseWorldZ);
     }
 
     @Override
@@ -103,14 +136,19 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
     }
 
     private int getScreenXTileRange() {
-        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterX() << this.coordinateShiftManager.scaleShift()) + 2);
+        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(scaledScreenCenterX()) + 2);
     }
 
     private int getScreenZTileRange() {
-        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(getScreenCenterZ() << this.coordinateShiftManager.scaleShift()) + 2);
+        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(scaledScreenCenterZ()) + 2);
     }
 
-
+    private int scaledScreenCenterX() {
+        return getScreenCenterX() << this.coordinateShiftManager.scaleShift();
+    }
+    private int scaledScreenCenterZ() {
+        return getScreenCenterZ() << this.coordinateShiftManager.scaleShift();
+    }
 
     @Override
     public void onClose() {

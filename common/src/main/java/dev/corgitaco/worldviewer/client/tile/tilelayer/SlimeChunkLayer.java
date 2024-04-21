@@ -10,6 +10,7 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FastColor;
+import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
 
 import javax.imageio.ImageIO;
@@ -27,13 +28,10 @@ public class SlimeChunkLayer extends TileLayer {
     @Nullable
     private final int[] image;
 
-    @Nullable
-    private final boolean[] slimeChunkData;
 
     public SlimeChunkLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet sampledChunks, @Nullable SlimeChunkLayer higherResolution) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, sampledChunks, higherResolution);
 
-        boolean[] data = null;
 
         int[] image = null;
 
@@ -41,7 +39,6 @@ public class SlimeChunkLayer extends TileLayer {
         for (int sampleX = 0; sampleX < size; sampleX++) {
             for (int sampleZ = 0; sampleZ < size; sampleZ++) {
                 if (Thread.currentThread().isInterrupted()) {
-                    this.slimeChunkData = null;
                     this.image = null;
                     return;
                 }
@@ -50,22 +47,14 @@ public class SlimeChunkLayer extends TileLayer {
                 int idx = sampleX + sampleZ * size;
 
                 if (tileManager.isSlimeChunk(SectionPos.blockToSectionCoord(worldPos.getX()), SectionPos.blockToSectionCoord(worldPos.getZ()))) {
-                    if (data == null) {
-                        data = new boolean[SectionPos.blockToSectionCoord(size) * SectionPos.blockToSectionCoord(size)];
-                    }
-
                     if (image == null) {
                         image = new int[size * size];
                     }
 
                     image[idx] = ColorUtils.ABGR.packABGR(255, 93, 190, 120);
-
-
-                    data[SectionPos.blockToSectionCoord(sampleX) * SectionPos.blockToSectionCoord(sampleZ) * SectionPos.blockToSectionCoord(size)] = true;
                 }
             }
         }
-        this.slimeChunkData = data;
         this.image = image;
     }
 
@@ -87,7 +76,6 @@ public class SlimeChunkLayer extends TileLayer {
                     slimeChunkData[i] = slimeChunk == 1;
                 }
 
-                this.slimeChunkData = slimeChunkData;
                 this.sampleResolution = compoundTag.getInt("res");
                 BufferedImage bufferedImage = Files.exists(imagePath) ? ImageIO.read(imagePath.toFile()) : null;
                 if (bufferedImage != null) {
@@ -103,17 +91,14 @@ public class SlimeChunkLayer extends TileLayer {
             }
 
         } else {
-            this.slimeChunkData = null;
             this.image = null;
         }
     }
 
     @Override
-    public @Nullable List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
-        if (slimeChunkData == null) {
-            return Collections.emptyList();
-        }
-        boolean slimeChunk = this.slimeChunkData[SectionPos.blockToSectionCoord(mouseTileLocalX) + SectionPos.blockToSectionCoord(mouseTileLocalY) * ((int) Math.sqrt(this.slimeChunkData.length))];
+    public List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY, int mouseTileImageLocalX, int mouseTileImageLocalY) {
+
+        boolean slimeChunk = this.image != null && this.image[mouseTileImageLocalX + mouseTileImageLocalY * ((int) Mth.sqrt(this.image.length))] != 0;
 
         return Collections.singletonList(Component.literal("Slime Chunk? %s".formatted(slimeChunk ? "Yes" : "No")).setStyle(Style.EMPTY.withColor(slimeChunk ? FastColor.ARGB32.color(255, 120, 190, 93) : FastColor.ARGB32.color(255, 255, 255, 255))));
     }
@@ -125,24 +110,11 @@ public class SlimeChunkLayer extends TileLayer {
 
     @Override
     public boolean isComplete() {
-        return this.image != null && this.slimeChunkData != null;
+        return this.image != null;
     }
 
     @Override
-    public @Nullable CompoundTag tag() {
-        if (slimeChunkData == null) {
-            return null;
-        }
-
-        CompoundTag compoundTag = new CompoundTag();
-        byte[] slimeChunks = new byte[slimeChunkData.length];
-
-        for (int i = 0; i < slimeChunkData.length; i++) {
-            slimeChunks[i] = (byte) (slimeChunkData[i] ? 1 : 0);
-        }
-
-        compoundTag.putInt("res", this.sampleResolution);
-        compoundTag.putByteArray("slime_chunks", slimeChunks);
+    public @Nullable CompoundTag tag() {;
         return super.tag();
     }
 

@@ -1,19 +1,10 @@
 package dev.corgitaco.worldviewer.client.tile.tilelayer;
 
 
-import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.vertex.PoseStack;
-import dev.corgitaco.worldviewer.client.ClientUtil;
-import dev.corgitaco.worldviewer.client.WVRenderType;
-import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
-import it.unimi.dsi.fastutil.longs.LongArraySet;
-import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.longs.*;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
@@ -34,7 +25,7 @@ public class StructuresLayer extends TileLayer {
     public StructuresLayer(DataTileManager tileManager, int y, int tileWorldX, int tileWorldZ, int size, int sampleResolution, LongSet loadedChunks, @Nullable StructuresLayer lowerResolution) {
         super(tileManager, y, tileWorldX, tileWorldZ, size, sampleResolution, loadedChunks, lowerResolution);
 
-        Map<Holder<Structure>, LongSet> positionsForStructure =  new Reference2ObjectOpenHashMap<>();
+        Map<Holder<Structure>, LongSet> positionsForStructure = new Reference2ObjectOpenHashMap<>();
         for (int x = 0; x < SectionPos.blockToSectionCoord(size * sampleResolution); x++) {
             for (int z = 0; z < SectionPos.blockToSectionCoord(size * sampleResolution); z++) {
                 int chunkX = SectionPos.blockToSectionCoord(tileWorldX) + x;
@@ -54,48 +45,33 @@ public class StructuresLayer extends TileLayer {
         this.positionsForStructure = positionsForStructure;
     }
 
-    @Override
-    public void afterTilesRender(MultiBufferSource.BufferSource bufferSource, PoseStack stack, double opacity, int tileMinWorldX, int tileMinWorldZ, RenderTileContext renderTileContext) {
+    public Long2ObjectMap<DynamicTexture> spriteRenderer(RenderTileContext renderTileContext) {
         if (this.positionsForStructure != null) {
+            Long2ObjectMap<DynamicTexture> renderer = new Long2ObjectLinkedOpenHashMap<>();
+
             this.positionsForStructure.forEach(((configuredStructureFeatureHolder, longs) -> {
+                DynamicTexture dynamicTexture = renderTileContext.structureRenderer().getStructureRendering().get(configuredStructureFeatureHolder);
+                if (dynamicTexture == null) {
+                    return;
+                }
+
                 for (long structureChunkPos : longs) {
-                    int structureWorldX = SectionPos.sectionToBlockCoord(ChunkPos.getX(structureChunkPos));
-                    int structureWorldZ = SectionPos.sectionToBlockCoord(ChunkPos.getZ(structureChunkPos));
+                    int structureWorldX = SectionPos.sectionToBlockCoord(ChunkPos.getX(structureChunkPos)) + 7;
+                    int structureWorldZ = SectionPos.sectionToBlockCoord(ChunkPos.getZ(structureChunkPos)) + 7;
 
-
-                    if (renderTileContext.worldViewArea().intersects(structureWorldX, structureWorldZ, structureWorldX, structureWorldZ)) {
-                        DynamicTexture dynamicTexture = renderTileContext.structureRenderer().getStructureRendering().get(configuredStructureFeatureHolder);
-
-                        if (dynamicTexture != null) {
-                            CoordinateShiftManager coordinateShiftManager = renderTileContext.coordinateShiftManager();
-
-                            NativeImage pixels = dynamicTexture.getPixels();
-
-                            int renderX = (structureWorldX >> coordinateShiftManager.scaleShift()) - (pixels.getWidth() / 2);
-                            int renderY = (structureWorldZ >> coordinateShiftManager.scaleShift()) - (pixels.getHeight() / 2);
-
-                            ClientUtil.blit(
-                                    bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(dynamicTexture.getId(), RenderType.NO_TRANSPARENCY)),
-                                    stack,
-                                    1,
-                                    renderX,
-                                    renderY,
-                                    0F,
-                                    0F,
-                                    pixels.getWidth(),
-                                    pixels.getHeight(),
-                                    pixels.getWidth(),
-                                    pixels.getHeight()
-                            );
-                        }
-                    }
+                    renderer.computeIfAbsent(ChunkPos.asLong(structureWorldX, structureWorldZ), key -> dynamicTexture);
                 }
             }));
+
+            return renderer;
         }
+
+        return Long2ObjectMaps.emptyMap();
     }
 
+
     @Override
-    public @Nullable List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY) {
+    public @Nullable List<Component> toolTip(double mouseScreenX, double mouseScreenY, int mouseWorldX, int mouseWorldZ, int mouseTileLocalX, int mouseTileLocalY, int mouseTileImageLocalX, int mouseTileImageLocalY) {
         if (this.positionsForStructure != null) {
             StringBuilder structures = new StringBuilder();
             this.positionsForStructure.forEach((configuredStructureFeatureHolder, longs) -> {
@@ -109,7 +85,7 @@ public class StructuresLayer extends TileLayer {
             });
             return Collections.singletonList(Component.literal("Structure(s): %s".formatted(structures.toString())));
         }
-        return null;
+        return Collections.emptyList();
     }
 
     @Override

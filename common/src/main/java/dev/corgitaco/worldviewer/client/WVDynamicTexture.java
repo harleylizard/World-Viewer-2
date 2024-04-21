@@ -4,9 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import dev.corgitaco.worldviewer.client.render.ColorUtils;
 import dev.corgitaco.worldviewer.common.WorldViewer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.util.FastColor;
 import org.jetbrains.annotations.NotNull;
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
