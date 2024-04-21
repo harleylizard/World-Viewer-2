@@ -73,7 +73,7 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
 
         for (int regionX = this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.minX()); regionX <= this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.maxX()); regionX++) {
             for (int regionZ = this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.minZ()); regionZ <= this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.maxZ()); regionZ++) {
-                this.grid.computeIfAbsent(ChunkPos.asLong(regionX, regionZ), key -> new RegionGrid(key, this.coordinateShiftManager, 2));
+                this.grid.computeIfAbsent(ChunkPos.asLong(regionX, regionZ), key -> new RegionGrid(key, this.coordinateShiftManager, 3));
             }
         }
 
@@ -103,27 +103,14 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
             renderGridEntry.getValue().renderCoords(bufferSource, poseStack, this.worldViewArea);
         }
 
-
-        renderCoordinatess(bufferSource, poseStack, 1);
-
         this.tileLayerRenderTileManager.renderSprites(bufferSource, poseStack, mouseX, mouseY, partialTicks);
 
         poseStack.popPose();
 
         renderToolTip(guiGraphics, mouseX, mouseY);
 
-        if (minecraft.getFps() < 100) {
-            String s = "";
-        }
-
         guiGraphics.drawString(Minecraft.getInstance().font, minecraft.fpsString, 0, 0, FastColor.ARGB32.color(255, 255, 255, 255));
     }
-
-    public void renderCoordinatess(MultiBufferSource.BufferSource bufferSource, PoseStack stack, int scale) {
-
-
-    }
-
 
     private void renderToolTip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         BlockPos mouseWorldVec3 = getMouseWorldPos(mouseX, mouseY);
@@ -134,7 +121,6 @@ public class WorldScreenV3 extends Screen implements RenderTileContext {
         toolTip.add(Component.literal("").withStyle(ChatFormatting.BOLD));
 
         toolTip.addAll(this.tileLayerRenderTileManager.toolTip(mouseX, mouseY, getMouseWorldPos(mouseX, mouseY)));
-
         guiGraphics.renderTooltip(Minecraft.getInstance().font, toolTip, Optional.empty(), mouseX, mouseY);
     }
 

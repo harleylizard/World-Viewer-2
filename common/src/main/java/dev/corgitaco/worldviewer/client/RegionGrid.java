@@ -68,8 +68,6 @@ public class RegionGrid implements Region {
     }
 
     public void renderCoords(MultiBufferSource.BufferSource bufferSource, PoseStack stack, BoundingBox boundingBox) {
-
-
         int range = this.shiftManager.getTileBlockSize() << scale;
         int offset = this.shiftManager.getTileBlockSize() << scale >> this.coordinateShiftManager().scaleShift();
 
