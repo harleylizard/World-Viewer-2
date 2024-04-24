@@ -29,6 +29,7 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
 
     private final int height;
     private final int width;
+    private BoundingBox tileArea;
     private BoundingBox worldViewArea;
 
     private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 1);
@@ -55,11 +56,7 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
         DataTileManager dataTileManager = new DataTileManager(ModPlatform.INSTANCE.configPath().resolve(String.valueOf(level.getSeed())), level.getChunkSource().getGenerator(), level.getChunkSource().getGenerator().getBiomeSource(), level, level.getSeed());
 
 
-        for (int regionX = this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.minX()); regionX <= this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.maxX()); regionX++) {
-            for (int regionZ = this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.minZ()); regionZ <= this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.worldViewArea.maxZ()); regionZ++) {
-                this.grid.computeIfAbsent(ChunkPos.asLong(regionX, regionZ), key -> new RegionGrid(key, this.coordinateShiftManager, 3));
-            }
-        }
+
 
         this.structureIconRenderer = new StructureIconRenderer(level);
         this.structureIconRenderer.init();
@@ -71,7 +68,22 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
     private void updateWorldViewArea() {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
         ServerLevel level = server.getLevel(Minecraft.getInstance().level.dimension());
+        int scaleXRadius = getScreenCenterX() << this.coordinateShiftManager.scaleShift();
+        int scaleZRadius = getScreenCenterZ() << this.coordinateShiftManager.scaleShift();
         this.worldViewArea = BoundingBox.fromCorners(
+                new Vec3i(
+                        (int) Math.max(level.getWorldBorder().getMinX(), this.origin.getX() - scaleXRadius),
+                        level.getMinBuildHeight(),
+                        (int) Math.max(level.getWorldBorder().getMinZ(), this.origin.getZ() - scaleZRadius)
+                ),
+                new Vec3i(
+                        (int) Math.min(level.getWorldBorder().getMaxX(), this.origin.getX() + scaleXRadius),
+                        level.getMaxBuildHeight(),
+                        (int) Math.min(level.getWorldBorder().getMaxZ(), this.origin.getZ() + scaleZRadius)
+                )
+        );
+
+        this.tileArea = BoundingBox.fromCorners(
                 new Vec3i(
                         (int) Math.max(level.getWorldBorder().getMinX(), this.origin.getX() - this.coordinateShiftManager.getBlockCoordFromTileCoord(getScreenXTileRange()) - 1),
                         level.getMinBuildHeight(),
@@ -83,6 +95,12 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
                         (int) Math.min(level.getWorldBorder().getMaxZ(), this.origin.getZ() + this.coordinateShiftManager.getBlockCoordFromTileCoord(getScreenZTileRange()) + 1)
                 )
         );
+
+        for (int regionX = this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.tileArea.minX()); regionX <= this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.tileArea.maxX()); regionX++) {
+            for (int regionZ = this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.tileArea.minZ()); regionZ <= this.coordinateShiftManager.getRegionCoordFromBlockCoord(this.tileArea.maxZ()); regionZ++) {
+                this.grid.computeIfAbsent(ChunkPos.asLong(regionX, regionZ), key -> new RegionGrid(key, this.coordinateShiftManager, 3));
+            }
+        }
     }
 
     public void tick() {
@@ -104,7 +122,7 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
         this.tileLayerRenderTileManager.renderLast(bufferSource, poseStack, mouseX, mouseY, partialTicks);
 
         for (Long2ObjectMap.Entry<RegionGrid> renderGridEntry : this.grid.long2ObjectEntrySet()) {
-            renderGridEntry.getValue().render(bufferSource, poseStack);
+            renderGridEntry.getValue().render(bufferSource, poseStack, this.worldViewArea);
         }
 
         for (Long2ObjectMap.Entry<RegionGrid> renderGridEntry : this.grid.long2ObjectEntrySet()) {
@@ -150,8 +168,13 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
     }
 
     @Override
+    public BoundingBox tileArea() {
+        return tileArea;
+    }
+
+    @Override
     public BoundingBox worldViewArea() {
-        return worldViewArea;
+        return this.worldViewArea;
     }
 
     @Override
@@ -170,11 +193,11 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
     }
 
     private int getScreenXTileRange() {
-        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(scaledScreenCenterX()) + 2);
+        return this.coordinateShiftManager.getTileCoordFromBlockCoord(scaledScreenCenterX()) + 2;
     }
 
     private int getScreenZTileRange() {
-        return (this.coordinateShiftManager.getTileCoordFromBlockCoord(scaledScreenCenterZ()) + 2);
+        return this.coordinateShiftManager.getTileCoordFromBlockCoord(scaledScreenCenterZ()) + 2;
     }
 
     private int scaledScreenCenterX() {

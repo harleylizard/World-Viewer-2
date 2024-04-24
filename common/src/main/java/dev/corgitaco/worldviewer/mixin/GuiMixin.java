@@ -1,8 +1,8 @@
 package dev.corgitaco.worldviewer.mixin;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.render.WorldViewerRenderer;
-import dev.corgitaco.worldviewer.common.WorldViewer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
@@ -17,7 +17,7 @@ public class GuiMixin {
 
     WorldViewerRenderer viewer;
 
-    @Inject(method = "render", at = @At("RETURN"))
+    @Inject(method = "render", at = @At("HEAD"))
     private void worldViewer$render(GuiGraphics guiGraphics, float partialTicks, CallbackInfo ci) {
         if (Minecraft.getInstance().player != null) {
             int minimapSize = 150;
@@ -26,23 +26,21 @@ public class GuiMixin {
                 viewer.init();
             }
 
-            int offsetFromEdge = 10;
+            int offsetFromEdge = 100;
 
             int borderSize = 3;
 
 
             PoseStack poseStack = guiGraphics.pose();
+            guiGraphics.enableScissor(offsetFromEdge, offsetFromEdge, offsetFromEdge + minimapSize, offsetFromEdge + minimapSize);
 
             poseStack.pushPose();
             guiGraphics.fill(offsetFromEdge - borderSize, offsetFromEdge - borderSize, offsetFromEdge + minimapSize + borderSize, offsetFromEdge +  minimapSize + borderSize, FastColor.ARGB32.color(255, 0, 0, 255));
             poseStack.translate(offsetFromEdge, offsetFromEdge, 0);
-
-            guiGraphics.enableScissor(offsetFromEdge, offsetFromEdge, minimapSize + offsetFromEdge, minimapSize + offsetFromEdge);
-
             viewer.render(guiGraphics.bufferSource(), poseStack, -1, -1, partialTicks);
-            guiGraphics.disableScissor();
 
             poseStack.popPose();
+            guiGraphics.disableScissor();
 
         }
     }

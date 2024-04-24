@@ -5,6 +5,7 @@ import dev.corgitaco.worldviewer.client.render.ColorUtils;
 import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 import java.util.Arrays;
 
@@ -18,10 +19,8 @@ public class WhiteBackgroundTileRegion extends TileRegion<WorldCoordSquare> {
     }
 
     @Override
-    public void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack) {
-        int renderX = getRenderX();
-        int renderY = getRenderY();
-        ClientUtil.blit(bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), stack, 1, renderX, renderY, 0F, 0F, this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize(), this.coordinateShiftManager.getRegionImageSize());
+    public void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack, BoundingBox worldViewArea) {
+        renderRegionImage(bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), stack, worldViewArea);
     }
 
     @Override

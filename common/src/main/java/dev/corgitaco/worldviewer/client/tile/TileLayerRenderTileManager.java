@@ -71,13 +71,13 @@ public class TileLayerRenderTileManager implements AutoCloseable {
     public void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack, int mouseX, int mouseY, float partialTicks) {
         for (Long2ObjectMap.Entry<WhiteBackgroundTileRegion> tileRenderRegionEntry : this.whiteBackGroundRegions.long2ObjectEntrySet()) {
             WhiteBackgroundTileRegion renderRegion = tileRenderRegionEntry.getValue();
-            renderRegion.render(bufferSource, stack);
+            renderRegion.render(bufferSource, stack, this.renderTileContext.worldViewArea());
 
         }
         for (Long2ObjectLinkedOpenHashMap<RenderTileLayerTileRegion> regionMap : this.regions) {
             for (Long2ObjectMap.Entry<RenderTileLayerTileRegion> tileRenderRegionEntry : regionMap.long2ObjectEntrySet()) {
                 RenderTileLayerTileRegion renderRegion = tileRenderRegionEntry.getValue();
-                renderRegion.render(bufferSource, stack);
+                renderRegion.render(bufferSource, stack, this.renderTileContext.worldViewArea());
             }
         }
     }
@@ -161,7 +161,7 @@ public class TileLayerRenderTileManager implements AutoCloseable {
 
                 int worldZ = this.coordinateShiftManager.getBlockCoordFromTileCoord(tileZ);
 
-                if (!this.renderTileContext.worldViewArea().intersects(worldX, worldZ, worldX + this.coordinateShiftManager.getTileBlockSize(), worldZ + this.coordinateShiftManager.getTileBlockSize())) {
+                if (!this.renderTileContext.tileArea().intersects(worldX, worldZ, worldX + this.coordinateShiftManager.getTileBlockSize(), worldZ + this.coordinateShiftManager.getTileBlockSize())) {
                     completableFutureEntry.getValue().cancel(true);
                 }
             }
@@ -176,7 +176,7 @@ public class TileLayerRenderTileManager implements AutoCloseable {
 
                 int worldZ = this.coordinateShiftManager.getBlockCoordFromRegionCoord(regionZ);
 
-                if (!this.renderTileContext.worldViewArea().intersects(worldX, worldZ, worldX + this.coordinateShiftManager.getRegionBlockSize(), worldZ + this.coordinateShiftManager.getRegionBlockSize())) {
+                if (!this.renderTileContext.tileArea().intersects(worldX, worldZ, worldX + this.coordinateShiftManager.getRegionBlockSize(), worldZ + this.coordinateShiftManager.getRegionBlockSize())) {
                     int finalI = i;
                     this.tileSubmissionsQueue.add(new WeightedEntry<>(() -> {
                         RenderTileLayerTileRegion value = entry.getValue();
@@ -219,7 +219,7 @@ public class TileLayerRenderTileManager implements AutoCloseable {
                 double angle = i * sliceSize;
                 int worldTileX = (int) Math.round(originWorldX + (Math.sin(angle) * distance));
                 int worldTileZ = (int) Math.round(originWorldZ + (Math.cos(angle) * distance));
-                BoundingBox worldViewArea = this.renderTileContext.worldViewArea();
+                BoundingBox worldViewArea = this.renderTileContext.tileArea();
                 int blockSize = Math.max(worldViewArea.getXSpan(), worldViewArea.getZSpan());
                 if (worldViewArea.intersects(worldTileX, worldTileZ, worldTileX, worldTileZ)) {
                     for (int layerIdx = 0; layerIdx < this.trackedTileLayerFutures.length; layerIdx++) {
