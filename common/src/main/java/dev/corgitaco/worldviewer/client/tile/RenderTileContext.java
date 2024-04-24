@@ -10,7 +10,6 @@ public interface RenderTileContext {
 
     CoordinateShiftManager coordinateShiftManager();
 
-    @Nullable
     BoundingBox tileArea();
 
     BoundingBox worldViewArea();
