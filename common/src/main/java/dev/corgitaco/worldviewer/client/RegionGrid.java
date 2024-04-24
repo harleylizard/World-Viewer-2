@@ -67,7 +67,7 @@ public class RegionGrid implements Region {
         renderRegionImage(bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), stack, worldViewArea);
     }
 
-    public void renderCoords(MultiBufferSource.BufferSource bufferSource, PoseStack stack, BoundingBox boundingBox) {
+    public void renderCoords(MultiBufferSource.BufferSource bufferSource, PoseStack stack, BoundingBox worldViewArea) {
         int range = this.shiftManager.getTileBlockSize() << scale;
         int offset = this.shiftManager.getTileBlockSize() << scale >> this.coordinateShiftManager().scaleShift();
 
@@ -80,7 +80,7 @@ public class RegionGrid implements Region {
                 int worldZ = getRegionBlockZ() + (zTile * range);
 
 
-                if (boundingBox.intersects(worldX, worldZ, worldX, worldZ)) {
+                if (worldViewArea.intersects(worldX, worldZ, worldX, worldZ)) {
                     Font font = Minecraft.getInstance().font;
                     String coord = "%d,%d".formatted(worldX, worldZ);
 

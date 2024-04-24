@@ -112,20 +112,25 @@ public class TileLayerRenderTileManager implements AutoCloseable {
 
 
             pairEntry.getValue().getSecond().forEach(packedBlockPos -> {
-                int renderX = (ChunkPos.getX(packedBlockPos) >> coordinateShiftManager.scaleShift()) - (pixels.getWidth() / 2);
-                int renderY = (ChunkPos.getZ(packedBlockPos) >> coordinateShiftManager.scaleShift()) - (pixels.getHeight() / 2);
-                ClientUtil.blit(buffer,
-                        stack,
-                        1,
-                        renderX,
-                        renderY,
-                        0F,
-                        0F,
-                        pixels.getWidth(),
-                        pixels.getHeight(),
-                        pixels.getWidth(),
-                        pixels.getHeight()
-                );
+                int worldX = ChunkPos.getX(packedBlockPos) >> coordinateShiftManager.scaleShift();
+                int worldZ = ChunkPos.getZ(packedBlockPos) >> coordinateShiftManager.scaleShift();
+
+                if (!this.renderTileContext.worldViewArea().intersects(worldX, worldZ, worldX, worldZ)) {
+                    int renderX = worldX - (pixels.getWidth() / 2);
+                    int renderY = worldZ - (pixels.getHeight() / 2);
+                    ClientUtil.blit(buffer,
+                            stack,
+                            1,
+                            renderX,
+                            renderY,
+                            0F,
+                            0F,
+                            pixels.getWidth(),
+                            pixels.getHeight(),
+                            pixels.getWidth(),
+                            pixels.getHeight()
+                    );
+                }
             });
 
 
