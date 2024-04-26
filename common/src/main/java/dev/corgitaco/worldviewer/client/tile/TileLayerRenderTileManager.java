@@ -298,6 +298,7 @@ public class TileLayerRenderTileManager implements AutoCloseable {
                 })).whenComplete((singleScreenTileLayer, throwable) -> {
                     if (throwable != null) {
                         throwable.printStackTrace();
+                        return;
                     }
 
                     this.tileSubmissionsQueue.add(new WeightedEntry<>(() -> {

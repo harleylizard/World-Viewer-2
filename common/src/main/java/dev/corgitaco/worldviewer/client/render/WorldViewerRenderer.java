@@ -5,7 +5,10 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.datafixers.util.Pair;
-import dev.corgitaco.worldviewer.client.*;
+import dev.corgitaco.worldviewer.client.ClientUtil;
+import dev.corgitaco.worldviewer.client.IconLookup;
+import dev.corgitaco.worldviewer.client.RegionGrid;
+import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.client.tile.TileLayerRenderTileManager;
@@ -13,7 +16,10 @@ import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import dev.corgitaco.worldviewer.platform.ModPlatform;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.longs.*;
+import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -169,39 +175,44 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
 
                     DynamicTexture texture = entityTextures.get(entityTypeResourceKey);
                     if (texture != null) {
-                        entitiesToRender.computeIfAbsent(texture.getId(), key -> Pair.of(texture, new LongArrayList())).getSecond().add(ChunkPos.asLong(entity.getBlockX(), entity.getBlockZ()));
+                        Pair<DynamicTexture, LongList> pair = entitiesToRender.get(texture.getId());
+                        if (pair == null) {
+                            pair = Pair.of(texture, new LongArrayList());
+                            entitiesToRender.put(texture.getId(), pair);
+                        }
+
+                        pair.getSecond().add(ChunkPos.asLong(entity.getBlockX(), entity.getBlockZ()));
                     }
                 }
             }
         }
+
         for (Int2ObjectMap.Entry<Pair<DynamicTexture, LongList>> pairEntry : entitiesToRender.int2ObjectEntrySet()) {
             VertexConsumer buffer = bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(pairEntry.getIntKey(), RenderType.NO_TRANSPARENCY));
             NativeImage pixels = pairEntry.getValue().getFirst().getPixels();
 
-            pairEntry.getValue().getSecond().forEach(packedBlockPos -> {
+            LongList positions = pairEntry.getValue().getSecond();
+            for (long packedBlockPos : positions) {
                 int worldX = ChunkPos.getX(packedBlockPos) >> coordinateShiftManager.scaleShift();
                 int worldZ = ChunkPos.getZ(packedBlockPos) >> coordinateShiftManager.scaleShift();
 
-                if (this.worldViewArea.intersects(worldX, worldZ, worldX, worldZ)) {
-                    int renderX = worldX - (pixels.getWidth() / 2);
-                    int renderY = worldZ - (pixels.getHeight() / 2);
-                    ClientUtil.blit(buffer,
-                            stack,
-                            1,
-                            renderX,
-                            renderY,
-                            0F,
-                            0F,
-                            pixels.getWidth(),
-                            pixels.getHeight(),
-                            pixels.getWidth(),
-                            pixels.getHeight()
-                    );
-                }
-            });
+                int renderX = worldX - (pixels.getWidth() / 2);
+                int renderY = worldZ - (pixels.getHeight() / 2);
+                ClientUtil.blit(buffer,
+                        stack,
+                        1,
+                        renderX,
+                        renderY,
+                        0F,
+                        0F,
+                        pixels.getWidth(),
+                        pixels.getHeight(),
+                        pixels.getWidth(),
+                        pixels.getHeight()
+                );
+            }
         }
     }
-
 
 
     private void drawPlayerHead(MultiBufferSource.BufferSource bufferSource, PoseStack stack, Player player) {
