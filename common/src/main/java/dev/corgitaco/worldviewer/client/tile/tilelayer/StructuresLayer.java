@@ -8,6 +8,7 @@ import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -50,7 +51,7 @@ public class StructuresLayer extends TileLayer {
             Long2ObjectMap<DynamicTexture> renderer = new Long2ObjectLinkedOpenHashMap<>();
 
             this.positionsForStructure.forEach(((configuredStructureFeatureHolder, longs) -> {
-                DynamicTexture dynamicTexture = renderTileContext.structureRenderer().getStructureRendering().get(configuredStructureFeatureHolder);
+                DynamicTexture dynamicTexture = renderTileContext.iconLookup().getTextures().get(Registries.STRUCTURE).get(configuredStructureFeatureHolder.unwrapKey().orElseThrow());
                 if (dynamicTexture == null) {
                     return;
                 }

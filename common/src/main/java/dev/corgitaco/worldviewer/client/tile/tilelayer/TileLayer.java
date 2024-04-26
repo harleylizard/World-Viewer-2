@@ -3,6 +3,7 @@ package dev.corgitaco.worldviewer.client.tile.tilelayer;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.corgitaco.worldviewer.client.ClientUtil;
+import dev.corgitaco.worldviewer.client.WVRenderType;
 import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
@@ -27,11 +28,11 @@ public abstract class TileLayer {
 
     public static final List<TileLayerRegistryEntry<?>> FACTORY_REGISTRY = Util.make(() -> {
         List<TileLayerRegistryEntry<?>> tileLayers = new ArrayList<>();
-        tileLayers.add(new TileLayerRegistryEntry<HeightsLayer>("heights", 0.5F, HeightsLayer::new, HeightsLayer::new, RenderType.NO_TRANSPARENCY, 1));
         tileLayers.add(new TileLayerRegistryEntry<BiomeLayer>("biomes", 1, BiomeLayer::new, BiomeLayer::new, RenderType.NO_TRANSPARENCY, 250));
-        tileLayers.add(new TileLayerRegistryEntry<TopBlockMapLayer>("map", 1, TopBlockMapLayer::new, TopBlockMapLayer::new, RenderType.NO_TRANSPARENCY, 200));
-        tileLayers.add(new TileLayerRegistryEntry<NoiseCaveLayer>("caves", 1, NoiseCaveLayer::new, NoiseCaveLayer::new, RenderType.NO_TRANSPARENCY, 1));
-        tileLayers.add(new TileLayerRegistryEntry<SlimeChunkLayer>("slime_chunks", 1, SlimeChunkLayer::new, SlimeChunkLayer::new, RenderType.NO_TRANSPARENCY, 150));
+//        tileLayers.add(new TileLayerRegistryEntry<HeightsLayer>("heights", 0.1F, HeightsLayer::new, HeightsLayer::new, WVRenderType.DST_COLOR_SRC_ALPHA_TRANSPARENCY, 1));
+//        tileLayers.add(new TileLayerRegistryEntry<TopBlockMapLayer>("map", 1, TopBlockMapLayer::new, TopBlockMapLayer::new, RenderType.NO_TRANSPARENCY, 200));
+//        tileLayers.add(new TileLayerRegistryEntry<NoiseCaveLayer>("caves", 1, NoiseCaveLayer::new, NoiseCaveLayer::new, RenderType.NO_TRANSPARENCY, 1));
+//        tileLayers.add(new TileLayerRegistryEntry<SlimeChunkLayer>("slime_chunks", 1, SlimeChunkLayer::new, SlimeChunkLayer::new, RenderType.NO_TRANSPARENCY, 150));
         tileLayers.add(new TileLayerRegistryEntry<>("structures", 1, StructuresLayer::new, null, RenderType.NO_TRANSPARENCY, 100));
         return tileLayers;
     });

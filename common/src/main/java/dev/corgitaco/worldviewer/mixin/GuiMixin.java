@@ -2,6 +2,7 @@ package dev.corgitaco.worldviewer.mixin;
 
 import dev.corgitaco.worldviewer.client.WorldViewerClientConfig;
 import dev.corgitaco.worldviewer.client.gui.WorldViewerGui;
+import dev.corgitaco.worldviewer.client.render.WorldViewerRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.FastColor;
@@ -12,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Gui.class)
-public class GuiMixin {
+public class GuiMixin implements WorldViewerRenderer.Access {
 
     @Unique
     private final WorldViewerGui worldViewer$worldViewerGui = new WorldViewerGui(new WorldViewerClientConfig.Gui(10, 10, 100, 100, 3, FastColor.ARGB32.color(255, 0, 0, 0)));
@@ -32,5 +33,10 @@ public class GuiMixin {
     @Inject(method = "onDisconnected", at = @At("RETURN"))
     private void disconnect(CallbackInfo ci) {
         this.worldViewer$worldViewerGui.close();
+    }
+
+    @Override
+    public WorldViewerRenderer worldViewerRenderer() {
+        return this.worldViewer$worldViewerGui.worldViewerRenderer();
     }
 }

@@ -12,7 +12,7 @@ import net.minecraft.util.FastColor;
 import java.util.List;
 import java.util.Optional;
 
-public class WorldViewerScreen extends Screen {
+public class WorldViewerScreen extends Screen implements WorldViewerRenderer.Access {
 
 
     private WorldViewerRenderer worldViewerRenderer;
@@ -52,5 +52,10 @@ public class WorldViewerScreen extends Screen {
     public void onClose() {
         super.onClose();
         this.worldViewerRenderer.close();
+    }
+
+    @Override
+    public WorldViewerRenderer worldViewerRenderer() {
+        return this.worldViewerRenderer;
     }
 }

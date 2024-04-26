@@ -20,7 +20,7 @@ public class WhiteBackgroundTileRegion extends TileRegion<WorldCoordSquare> {
 
     @Override
     public void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack, BoundingBox worldViewArea) {
-        renderRegionImage(bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), stack, worldViewArea);
+        renderRegionImage(bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), stack, worldViewArea, 1);
     }
 
     @Override
@@ -51,6 +51,11 @@ public class WhiteBackgroundTileRegion extends TileRegion<WorldCoordSquare> {
     @Override
     public boolean hasTile(int idx) {
         return true;
+    }
+
+    @Override
+    public boolean dropTile(int idx) {
+        return false;
     }
 
     @Override

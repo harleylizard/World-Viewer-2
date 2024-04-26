@@ -64,7 +64,7 @@ public class RegionGrid implements Region {
 
     @Override
     public void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack, BoundingBox worldViewArea) {
-        renderRegionImage(bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), stack, worldViewArea);
+        renderRegionImage(bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), RenderType.NO_TRANSPARENCY)), stack, worldViewArea, 1);
     }
 
     public void renderCoords(MultiBufferSource.BufferSource bufferSource, PoseStack stack, BoundingBox worldViewArea) {

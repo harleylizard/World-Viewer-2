@@ -7,22 +7,27 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import org.jetbrains.annotations.Nullable;
 
-public final class WorldViewerGui implements AutoCloseable {
+public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.Access {
     private final WorldViewerClientConfig.Gui guiConfig;
 
     @Nullable
-    private WorldViewerRenderer viewer;
+    private WorldViewerRenderer worldViewerRenderer;
 
 
     public WorldViewerGui(WorldViewerClientConfig.Gui guiConfig) {
         this.guiConfig = guiConfig;
     }
 
+    public WorldViewerGui(WorldViewerClientConfig.Gui guiConfig, WorldViewerRenderer worldViewerRenderer) {
+        this.guiConfig = guiConfig;
+        this.worldViewerRenderer = worldViewerRenderer;
+    }
+
     public void renderGui(GuiGraphics guiGraphics, float partialTicks) {
         if (Minecraft.getInstance().player != null) {
-            if (this.viewer == null) {
-                viewer = new WorldViewerRenderer(this.guiConfig.mapSizeX(), this.guiConfig.mapSizeY());
-                viewer.init();
+            if (this.worldViewerRenderer == null) {
+                worldViewerRenderer = new WorldViewerRenderer(this.guiConfig.mapSizeX(), this.guiConfig.mapSizeY());
+                worldViewerRenderer.init();
             }
 
             PoseStack poseStack = guiGraphics.pose();
@@ -40,7 +45,7 @@ public final class WorldViewerGui implements AutoCloseable {
 
                 poseStack.pushPose();
                 poseStack.translate(this.guiConfig.xOffset(), this.guiConfig.yOffset(), 0);
-                viewer.render(guiGraphics.bufferSource(), poseStack, -1, -1, partialTicks);
+                worldViewerRenderer.render(guiGraphics.bufferSource(), poseStack, -1, -1, partialTicks);
                 poseStack.popPose();
                 guiGraphics.disableScissor();
             });
@@ -48,16 +53,21 @@ public final class WorldViewerGui implements AutoCloseable {
     }
 
     public void tick() {
-        if (this.viewer != null) {
-            this.viewer.tick();
+        if (this.worldViewerRenderer != null) {
+            this.worldViewerRenderer.tick();
         }
     }
 
     @Override
     public void close() {
-        if (this.viewer != null) {
-            this.viewer.close();
+        if (this.worldViewerRenderer != null) {
+            this.worldViewerRenderer.close();
         }
-        this.viewer = null;
+        this.worldViewerRenderer = null;
+    }
+
+    @Override
+    public WorldViewerRenderer worldViewerRenderer() {
+        return this.worldViewerRenderer;
     }
 }

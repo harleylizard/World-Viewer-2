@@ -11,10 +11,10 @@ public interface Region extends AutoCloseable {
 
     void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack, BoundingBox worldViewArea);
 
-    default void renderRegionImage(VertexConsumer consumer, PoseStack stack, BoundingBox worldViewArea) {
+    default void renderRegionImage(VertexConsumer consumer, PoseStack stack, BoundingBox worldViewArea, float opacity) {
         if (worldViewArea.intersects(getRegionBlockX(), getRegionBlockZ(), getRegionBlockX() + this.coordinateShiftManager().getRegionBlockSize(), getRegionBlockZ() + this.coordinateShiftManager().getRegionBlockSize())) {
             int imageSize = this.coordinateShiftManager().getRegionImageSize();
-            ClientUtil.blit(consumer, stack, 1, getRenderX(), getRenderY(), 0, 0, imageSize, imageSize, imageSize, imageSize);
+            ClientUtil.blit(consumer, stack, opacity, getRenderX(), getRenderY(), 0, 0, imageSize, imageSize, imageSize, imageSize);
         }
     }
 

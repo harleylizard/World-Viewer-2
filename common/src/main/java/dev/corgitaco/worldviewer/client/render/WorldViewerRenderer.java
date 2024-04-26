@@ -1,29 +1,44 @@
 package dev.corgitaco.worldviewer.client.render;
 
+import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
-import dev.corgitaco.worldviewer.client.RegionGrid;
-import dev.corgitaco.worldviewer.client.StructureIconRenderer;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.datafixers.util.Pair;
+import dev.corgitaco.worldviewer.client.*;
 import dev.corgitaco.worldviewer.client.screen.CoordinateShiftManager;
 import dev.corgitaco.worldviewer.client.tile.RenderTileContext;
 import dev.corgitaco.worldviewer.client.tile.TileLayerRenderTileManager;
 import dev.corgitaco.worldviewer.common.storage.DataTileManager;
 import dev.corgitaco.worldviewer.platform.ModPlatform;
-import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.*;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
 
@@ -32,12 +47,13 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
     private BoundingBox tileArea;
     private BoundingBox worldViewArea;
 
-    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 1);
+    private final CoordinateShiftManager coordinateShiftManager = new CoordinateShiftManager(10, 0);
     private final BlockPos.MutableBlockPos origin = new BlockPos.MutableBlockPos();
+    private final Map<UUID, ResourceLocation> cachedSkins = new HashMap<>();
 
     private TileLayerRenderTileManager tileLayerRenderTileManager;
 
-    private StructureIconRenderer structureIconRenderer;
+    private IconLookup iconLookup;
 
     private final Long2ObjectLinkedOpenHashMap<RegionGrid> grid = new Long2ObjectLinkedOpenHashMap<>();
 
@@ -51,15 +67,11 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
         ServerLevel level = server.getLevel(Minecraft.getInstance().level.dimension());
 
-
         updateWorldViewArea();
         DataTileManager dataTileManager = new DataTileManager(ModPlatform.INSTANCE.configPath().resolve(String.valueOf(level.getSeed())), level.getChunkSource().getGenerator(), level.getChunkSource().getGenerator().getBiomeSource(), level, level.getSeed());
 
-
-
-
-        this.structureIconRenderer = new StructureIconRenderer(level);
-        this.structureIconRenderer.init();
+        this.iconLookup = new IconLookup();
+        this.iconLookup.init();
 
         this.tileLayerRenderTileManager = new TileLayerRenderTileManager(this.origin, this, dataTileManager);
         this.tileLayerRenderTileManager.init();
@@ -112,6 +124,13 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
         this.tileLayerRenderTileManager.tick();
     }
 
+    public void loadChunk(int chunkX, int chunkZ) {
+        this.tileLayerRenderTileManager.chunkLoad(chunkX, chunkZ);
+    }
+
+    public void unloadChunk(int chunkX, int chunkZ) {
+    }
+
     public void render(MultiBufferSource.BufferSource bufferSource, PoseStack poseStack, int mouseX, int mouseY, float partialTicks) {
         poseStack.pushPose();
 
@@ -122,17 +141,90 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
         this.tileLayerRenderTileManager.renderLast(bufferSource, poseStack, mouseX, mouseY, partialTicks);
 
         for (Long2ObjectMap.Entry<RegionGrid> renderGridEntry : this.grid.long2ObjectEntrySet()) {
-            renderGridEntry.getValue().render(bufferSource, poseStack, this.worldViewArea);
-        }
-
-        for (Long2ObjectMap.Entry<RegionGrid> renderGridEntry : this.grid.long2ObjectEntrySet()) {
             renderGridEntry.getValue().renderCoords(bufferSource, poseStack, this.worldViewArea);
         }
 
         this.tileLayerRenderTileManager.renderSprites(bufferSource, poseStack);
 
+        drawEntities(bufferSource, poseStack);
+        for (Long2ObjectMap.Entry<RegionGrid> renderGridEntry : this.grid.long2ObjectEntrySet()) {
+            renderGridEntry.getValue().render(bufferSource, poseStack, this.worldViewArea);
+        }
+
+        drawPlayerHead(bufferSource, poseStack, Minecraft.getInstance().player);
+
         poseStack.popPose();
     }
+
+    private void drawEntities(MultiBufferSource.BufferSource bufferSource, PoseStack stack) {
+        Int2ObjectMap<Pair<DynamicTexture, LongList>> entitiesToRender = new Int2ObjectOpenHashMap<>();
+
+        for (Entity entity : Minecraft.getInstance().level.entitiesForRendering()) {
+            if (this.worldViewArea.intersects(entity.getBlockX(), entity.getBlockZ(), entity.getBlockX(), entity.getBlockZ())) {
+                if (entity instanceof Player player) {
+                    drawPlayerHead(bufferSource, stack, player);
+                } else {
+                    Object2ObjectOpenHashMap<ResourceKey<?>, DynamicTexture> entityTextures = this.iconLookup.getTextures().get(Registries.ENTITY_TYPE);
+                    ResourceKey<EntityType<?>> entityTypeResourceKey = ResourceKey.create(Registries.ENTITY_TYPE, BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()));
+
+                    DynamicTexture texture = entityTextures.get(entityTypeResourceKey);
+                    if (texture != null) {
+                        entitiesToRender.computeIfAbsent(texture.getId(), key -> Pair.of(texture, new LongArrayList())).getSecond().add(ChunkPos.asLong(entity.getBlockX(), entity.getBlockZ()));
+                    }
+                }
+            }
+        }
+        for (Int2ObjectMap.Entry<Pair<DynamicTexture, LongList>> pairEntry : entitiesToRender.int2ObjectEntrySet()) {
+            VertexConsumer buffer = bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(pairEntry.getIntKey(), RenderType.NO_TRANSPARENCY));
+            NativeImage pixels = pairEntry.getValue().getFirst().getPixels();
+
+            pairEntry.getValue().getSecond().forEach(packedBlockPos -> {
+                int worldX = ChunkPos.getX(packedBlockPos) >> coordinateShiftManager.scaleShift();
+                int worldZ = ChunkPos.getZ(packedBlockPos) >> coordinateShiftManager.scaleShift();
+
+                if (this.worldViewArea.intersects(worldX, worldZ, worldX, worldZ)) {
+                    int renderX = worldX - (pixels.getWidth() / 2);
+                    int renderY = worldZ - (pixels.getHeight() / 2);
+                    ClientUtil.blit(buffer,
+                            stack,
+                            1,
+                            renderX,
+                            renderY,
+                            0F,
+                            0F,
+                            pixels.getWidth(),
+                            pixels.getHeight(),
+                            pixels.getWidth(),
+                            pixels.getHeight()
+                    );
+                }
+            });
+        }
+    }
+
+
+
+    private void drawPlayerHead(MultiBufferSource.BufferSource bufferSource, PoseStack stack, Player player) {
+        GameProfile gameProfile = player.getGameProfile();
+
+        ResourceLocation skinLocation = cachedSkins.computeIfAbsent(gameProfile.getId(), uuid ->
+                new PlayerInfo(gameProfile, false).getSkinLocation()
+        );
+
+        boolean entityUpsideDown = LivingEntityRenderer.isEntityUpsideDown(player);
+        int yOffset = 8 + (entityUpsideDown ? 8 : 0);
+        int yHeight = 8 * (entityUpsideDown ? -1 : 1);
+
+        int size = 16;
+
+        int renderX = (player.getBlockX() >> this.coordinateShiftManager.scaleShift()) - (size / 2);
+        int renderZ = (player.getBlockZ() >> this.coordinateShiftManager.scaleShift()) - (size / 2);
+
+        RenderType renderType = WVRenderType.WORLD_VIEWER_GUI.apply(Minecraft.getInstance().getTextureManager().getTexture(skinLocation).getId(), RenderType.NO_TRANSPARENCY);
+        ClientUtil.blit(bufferSource.getBuffer(renderType), stack, 1, renderX, renderZ, size, size, 8.0F, (float) yOffset, 8, yHeight, 64, 64);
+
+    }
+
 
     public List<Component> getToolTip(int mouseX, int mouseY) {
         BlockPos mouseWorldVec3 = getMouseWorldPos(mouseX, mouseY);
@@ -178,8 +270,8 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
     }
 
     @Override
-    public StructureIconRenderer structureRenderer() {
-        return this.structureIconRenderer;
+    public IconLookup iconLookup() {
+        return this.iconLookup;
     }
 
     @Override
@@ -208,14 +300,6 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
         return getScreenCenterZ() << this.coordinateShiftManager.scaleShift();
     }
 
-    public double localXFromWorldX(double worldX) {
-        return origin.getX() - worldX;
-    }
-
-    public double localZFromWorldZ(double worldZ) {
-        return origin.getZ() + worldZ;
-    }
-
     public int getScreenCenterX() {
         return ((width / 2));
     }
@@ -223,7 +307,6 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
     public int getScreenCenterZ() {
         return ((height / 2));
     }
-
 
     private int getOriginRenderOffsetX() {
         return getOriginRenderOffset(origin.getX());
@@ -235,5 +318,10 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
 
     private int getOriginRenderOffset(int origin) {
         return -(origin >> this.coordinateShiftManager.scaleShift());
+    }
+
+    public interface Access {
+
+        WorldViewerRenderer worldViewerRenderer();
     }
 }

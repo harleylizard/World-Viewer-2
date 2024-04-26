@@ -71,7 +71,6 @@ public class TopBlockMapLayer extends TileLayer {
                     int b = (mapColor & 255);
 
                     image[sampleX + sampleZ * size] = ColorUtils.ABGR.packABGR(255, b, g, r);
-                    ;
                     data[idx] = Block.BLOCK_STATE_REGISTRY.getId(blockState);
                 }
             }

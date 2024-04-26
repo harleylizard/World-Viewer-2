@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.core.SectionPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.jetbrains.annotations.Nullable;
@@ -22,11 +23,13 @@ public class RenderTileLayerTileRegion extends TileRegion<SingleScreenTileLayer>
 
     private final WVDynamicTexture texture; // TODO: Allow nullable
     private final RenderStateShard.TransparencyStateShard transparencyStateShard;
+    private final float opacity;
 
 
-    public RenderTileLayerTileRegion(CoordinateShiftManager coordinateShiftManager, long regionPos, RenderStateShard.TransparencyStateShard transparencyStateShard) {
+    public RenderTileLayerTileRegion(CoordinateShiftManager coordinateShiftManager, long regionPos, RenderStateShard.TransparencyStateShard transparencyStateShard, float opacity) {
         super(coordinateShiftManager, regionPos);
         this.transparencyStateShard = transparencyStateShard;
+        this.opacity = opacity;
 
         int tileSize = coordinateShiftManager.getTileImageSize();
         layers = new SingleScreenTileLayer[(int) (tileSize * tileSize)];
@@ -66,8 +69,18 @@ public class RenderTileLayerTileRegion extends TileRegion<SingleScreenTileLayer>
         return this.layers[idx] != null;
     }
 
+    @Override
+    public boolean dropTile(int idx) {
+        SingleScreenTileLayer previousLayer = this.layers[idx];
+        if (previousLayer != null) {
+            this.layers[idx] = null;
+            return true;
+        }
+        return false;
+    }
+
     public void render(MultiBufferSource.BufferSource bufferSource, PoseStack stack, BoundingBox worldViewArea) {
-        renderRegionImage(bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), this.transparencyStateShard)), stack, worldViewArea);
+        renderRegionImage(bufferSource.getBuffer(WVRenderType.WORLD_VIEWER_GUI.apply(texture.getId(), this.transparencyStateShard)), stack, worldViewArea, this.opacity);
     }
 
 

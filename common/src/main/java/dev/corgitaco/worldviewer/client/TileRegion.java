@@ -45,6 +45,18 @@ public abstract class TileRegion<T extends Tile> implements Region {
     }
     public abstract boolean hasTile(int idx);
 
+    /**
+     * @return True if tile was dropped from internal array.
+     */
+    public boolean dropTile(int worldX, int worldZ) {
+        return dropTile(getTileIdx(worldX, worldZ));
+    }
+
+    /**
+     * @return True if tile was dropped from internal array.
+     */
+    public abstract boolean dropTile(int idx);
+
     @Override
     public long regionPos() {
         return this.regionPos;
