@@ -10,11 +10,13 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Optional;
 
 public class IconLookup implements AutoCloseable {
 
@@ -30,8 +32,18 @@ public class IconLookup implements AutoCloseable {
         ResourceManager resourceManager = Minecraft.getInstance().getResourceManager();
 
         for (ResourceKey<? extends Registry<?>> registry : REGISTRIES) {
-            Object2ObjectOpenHashMap<ResourceKey<?>, DynamicTexture> map = textures.computeIfAbsent(registry, key -> new Object2ObjectOpenHashMap<>());
+            Object2ObjectOpenHashMap<ResourceKey<?>, DynamicTexture> map = textures.computeIfAbsent(registry, key -> {
+                Object2ObjectOpenHashMap<ResourceKey<?>, DynamicTexture> hashMap = new Object2ObjectOpenHashMap<>();
 
+                Optional<Resource> resource = resourceManager.getResource(WorldViewer.createResourceLocation("worldviewer/textures/icon/%s/%s/unknown.png".formatted(registry.location().getNamespace(), registry.location().getPath())));
+                try (InputStream stream = resource.orElseThrow().open()) {
+                    NativeImage read = NativeImage.read(stream);
+                    hashMap.defaultReturnValue(new DynamicTexture(read));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                return hashMap;
+            });
 
             resourceManager.listResources("worldviewer", location -> location.getPath().startsWith("worldviewer/textures/icon/%s/%s".formatted(registry.location().getNamespace(), registry.location().getPath()))).forEach((location, resource) -> {
                 try (InputStream stream = resource.open()) {

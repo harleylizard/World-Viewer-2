@@ -39,6 +39,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -169,7 +170,7 @@ public class WorldViewerRenderer implements RenderTileContext, AutoCloseable {
             if (this.worldViewArea.intersects(entity.getBlockX(), entity.getBlockZ(), entity.getBlockX(), entity.getBlockZ())) {
                 if (entity instanceof Player player) {
                     drawPlayerHead(bufferSource, stack, player);
-                } else {
+                } else if (entity instanceof LivingEntity) {
                     Object2ObjectOpenHashMap<ResourceKey<?>, DynamicTexture> entityTextures = this.iconLookup.getTextures().get(Registries.ENTITY_TYPE);
                     ResourceKey<EntityType<?>> entityTypeResourceKey = ResourceKey.create(Registries.ENTITY_TYPE, BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()));
 
