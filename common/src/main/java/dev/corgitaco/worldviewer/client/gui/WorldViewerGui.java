@@ -1,18 +1,32 @@
 package dev.corgitaco.worldviewer.client.gui;
 
-import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.*;
 import dev.corgitaco.worldviewer.client.WorldViewerClientConfig;
 import dev.corgitaco.worldviewer.client.render.WorldViewerRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix4f;
+
+import static org.lwjgl.opengl.GL33.*;
+import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
 
 public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.Access {
+    private static final ResourceLocation TEXTURE = new ResourceLocation("worldviewer", "textures/minimap_shape/star.png");
+
+    static {
+        ReloadableShaders.RELOADABLE_SHADERS.defineShader("minimap_shape", DefaultVertexFormat.POSITION_TEX);
+    }
+
+    private final Framebuffer framebuffer = new Framebuffer();
+
     private final WorldViewerClientConfig.Gui guiConfig;
 
     @Nullable
     private WorldViewerRenderer worldViewerRenderer;
-
 
     public WorldViewerGui(WorldViewerClientConfig.Gui guiConfig) {
         this.guiConfig = guiConfig;
@@ -32,24 +46,66 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
 
             PoseStack poseStack = guiGraphics.pose();
 
-            guiGraphics.drawManaged(() -> {
-                guiGraphics.fill(
-                        this.guiConfig.xOffset() - this.guiConfig.borderSize(),
-                        this.guiConfig.yOffset() - this.guiConfig.borderSize(),
-                        this.guiConfig.xOffset() + this.guiConfig.mapSizeX() + this.guiConfig.borderSize(),
-                        this.guiConfig.yOffset() + this.guiConfig.mapSizeY() + this.guiConfig.borderSize(),
-                        this.guiConfig.borderColor()
-                );
+            framebuffer.bind();
+            glClearBufferfv(GL_COLOR, 1, new float[] {1.0F, 0.0F, 0.0F, 1.0F});
+            glClear(GL_COLOR_BUFFER_BIT);
 
-                guiGraphics.enableScissor(this.guiConfig.xOffset(), this.guiConfig.yOffset(), this.guiConfig.xOffset() + this.guiConfig.mapSizeX(), this.guiConfig.yOffset() + this.guiConfig.mapSizeY());
+            glViewport(0, 0, 854, 480);
+
+            guiGraphics.drawManaged(() -> {
+                var offsetX = 0.0F;
+                var offsetY = 0.0F;
 
                 poseStack.pushPose();
-                poseStack.translate(this.guiConfig.xOffset(), this.guiConfig.yOffset(), 0);
+                poseStack.translate(offsetX, offsetY, 0);
                 worldViewerRenderer.render(guiGraphics.bufferSource(), poseStack, -1, -1, partialTicks);
                 poseStack.popPose();
-                guiGraphics.disableScissor();
+
+                // guiGraphics.fill(
+                //         this.guiConfig.xOffset() - this.guiConfig.borderSize(),
+                //         this.guiConfig.yOffset() - this.guiConfig.borderSize(),
+                //         this.guiConfig.xOffset() + this.guiConfig.mapSizeX() + this.guiConfig.borderSize(),
+                //         this.guiConfig.yOffset() + this.guiConfig.mapSizeY() + this.guiConfig.borderSize(),
+                //         this.guiConfig.borderColor()
+                // );
+
+                //guiGraphics.enableScissor(this.guiConfig.xOffset(), this.guiConfig.yOffset(), this.guiConfig.xOffset() + this.guiConfig.mapSizeX(), this.guiConfig.yOffset() + this.guiConfig.mapSizeY());
+                //guiGraphics.disableScissor();
             });
+            Framebuffer.unbind();
+
+            drawShape(poseStack);
         }
+    }
+
+    private void drawShape(PoseStack poseStack) {
+        var window = Minecraft.getInstance().getWindow();
+        var width = (float) window.getWidth();
+        var height = (float) window.getHeight();
+        var aspectRatio = width / height;
+        var size = 1.0F;
+        var projection = new Matrix4f().ortho(-size * aspectRatio, size * aspectRatio, -size, size, 10.0F, -10.0F);
+
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+
+        var previous = RenderSystem.getShader();
+
+        RenderSystem.setShaderTexture(0, TEXTURE);
+        RenderSystem.setShaderTexture(1, framebuffer.getTexture());
+        // RenderSystem.setProjectionMatrix(projection, VertexSorting.ORTHOGRAPHIC_Z);
+
+        ReloadableShaders.RELOADABLE_SHADERS.setShader("minimap_shape");
+
+        var tesselator = Tesselator.getInstance();
+        var builder = tesselator.getBuilder();
+        builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        vertex(builder, -0.5F, -0.5F, 0.0F, 1.0F);
+        vertex(builder,  0.5F, -0.5F, 1.0F, 1.0F);
+        vertex(builder,  0.5F,  0.5F, 1.0F, 0.0F);
+        vertex(builder, -0.5F,  0.5F, 0.0F, 0.0F);
+        tesselator.end();
+        RenderSystem.setShader(() -> previous);
     }
 
     public void tick() {
@@ -69,5 +125,9 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
     @Override
     public WorldViewerRenderer worldViewerRenderer() {
         return this.worldViewerRenderer;
+    }
+
+    private static void vertex(BufferBuilder builder, float x, float y, float u, float v) {
+        builder.vertex(x, y, 1.0F).uv(u, v).endVertex();
     }
 }
