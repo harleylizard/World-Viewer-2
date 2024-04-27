@@ -5,6 +5,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import dev.corgitaco.worldviewer.client.WorldViewerClientConfig;
 import dev.corgitaco.worldviewer.client.render.WorldViewerRenderer;
+import dev.corgitaco.worldviewer.mixin.ProgramAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
@@ -17,11 +18,11 @@ import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
 public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.Access {
     private static final ResourceLocation TEXTURE = new ResourceLocation("worldviewer", "textures/minimap_shape/star.png");
 
+    private static final Framebuffer FRAMEBUFFER = new Framebuffer(854, 480);
+
     static {
         ReloadableShaders.RELOADABLE_SHADERS.defineShader("minimap_shape", DefaultVertexFormat.POSITION_TEX);
     }
-
-    private final Framebuffer framebuffer = new Framebuffer(854, 480);
 
     private final WorldViewerClientConfig.Gui guiConfig;
 
@@ -46,7 +47,6 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
 
             PoseStack poseStack = guiGraphics.pose();
 
-            //framebuffer.bind();
             //glClearBufferfv(GL_COLOR, 1, new float[] {1.0F, 0.0F, 0.0F, 1.0F});
             //glClear(GL_COLOR_BUFFER_BIT);
 
@@ -87,11 +87,13 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
         RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
 
         var previous = RenderSystem.getShader();
+        var copy = new Matrix4f(RenderSystem.getProjectionMatrix());
 
-        // var renderTarget = Minecraft.getInstance().getMainRenderTarget();
+        var renderTarget = Minecraft.getInstance().getMainRenderTarget();
 
         RenderSystem.setShaderTexture(0, TEXTURE);
-        RenderSystem.setShaderTexture(1, TEXTURE);
+        RenderSystem.setShaderTexture(1, renderTarget.getColorTextureId());
+
         RenderSystem.setProjectionMatrix(projection, VertexSorting.ORTHOGRAPHIC_Z);
 
         ReloadableShaders.RELOADABLE_SHADERS.setShader("minimap_shape");
@@ -104,6 +106,8 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
         vertex(builder,  0.5F,  0.5F, 1.0F, 0.0F);
         vertex(builder, -0.5F,  0.5F, 0.0F, 0.0F);
         tesselator.end();
+
+        RenderSystem.setProjectionMatrix(copy, VertexSorting.ORTHOGRAPHIC_Z);
         RenderSystem.setShader(() -> previous);
     }
 
