@@ -5,15 +5,11 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import dev.corgitaco.worldviewer.client.WorldViewerClientConfig;
 import dev.corgitaco.worldviewer.client.render.WorldViewerRenderer;
-import dev.corgitaco.worldviewer.mixin.ProgramAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
-
-import static org.lwjgl.opengl.GL33.*;
-import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
 
 public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.Access {
     private static final ResourceLocation TEXTURE = new ResourceLocation("worldviewer", "textures/minimap_shape/star.png");
@@ -50,6 +46,9 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
             //glClearBufferfv(GL_COLOR, 1, new float[] {1.0F, 0.0F, 0.0F, 1.0F});
             //glClear(GL_COLOR_BUFFER_BIT);
 
+            FRAMEBUFFER.bind(1);
+            FRAMEBUFFER.clear();
+
             guiGraphics.drawManaged(() -> {
                 var offsetX = 0.0F;
                 var offsetY = 0.0F;
@@ -70,6 +69,8 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
                 //guiGraphics.enableScissor(this.guiConfig.xOffset(), this.guiConfig.yOffset(), this.guiConfig.xOffset() + this.guiConfig.mapSizeX(), this.guiConfig.yOffset() + this.guiConfig.mapSizeY());
                 //guiGraphics.disableScissor();
             });
+
+            FRAMEBUFFER.unbind();
 
             drawShape(poseStack);
         }
@@ -92,7 +93,7 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
         var renderTarget = Minecraft.getInstance().getMainRenderTarget();
 
         RenderSystem.setShaderTexture(0, TEXTURE);
-        RenderSystem.setShaderTexture(1, renderTarget.getColorTextureId());
+        RenderSystem.setShaderTexture(1, FRAMEBUFFER.getColor());
 
         RenderSystem.setProjectionMatrix(projection, VertexSorting.ORTHOGRAPHIC_Z);
 
