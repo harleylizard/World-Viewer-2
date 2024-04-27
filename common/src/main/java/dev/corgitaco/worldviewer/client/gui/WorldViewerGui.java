@@ -5,11 +5,16 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import dev.corgitaco.worldviewer.client.WorldViewerClientConfig;
 import dev.corgitaco.worldviewer.client.render.WorldViewerRenderer;
+import dev.corgitaco.worldviewer.mixin.RenderTargetAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
+
+import static org.lwjgl.opengl.GL11.glClearColor;
+import static org.lwjgl.opengl.GL11.glDrawBuffer;
+import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 
 public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.Access {
     private static final ResourceLocation TEXTURE = new ResourceLocation("worldviewer", "textures/minimap_shape/star.png");
@@ -43,12 +48,18 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
 
             PoseStack poseStack = guiGraphics.pose();
 
-            //glClearBufferfv(GL_COLOR, 1, new float[] {1.0F, 0.0F, 0.0F, 1.0F});
-            //glClear(GL_COLOR_BUFFER_BIT);
+            var renderTarget = (RenderTargetAccessor) Minecraft.getInstance().getMainRenderTarget();
 
-            FRAMEBUFFER.bind(1);
+            FRAMEBUFFER.bind(renderTarget.getFrameBufferId());
+            glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
             FRAMEBUFFER.clear();
 
+            /** TODO::
+             *  Render Minimap GUI offscreen onto the Framebuffer's color attachment,
+             *  then in "drawShape" draw the quad and bind the shader.
+             *  Within the fragment shader it multiplies the shape's rgba with the color attachment's rgba
+             */
             guiGraphics.drawManaged(() -> {
                 var offsetX = 0.0F;
                 var offsetY = 0.0F;
@@ -57,21 +68,10 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
                 poseStack.translate(offsetX, offsetY, 0);
                 worldViewerRenderer.render(guiGraphics.bufferSource(), poseStack, -1, -1, partialTicks);
                 poseStack.popPose();
-
-                // guiGraphics.fill(
-                //         this.guiConfig.xOffset() - this.guiConfig.borderSize(),
-                //         this.guiConfig.yOffset() - this.guiConfig.borderSize(),
-                //         this.guiConfig.xOffset() + this.guiConfig.mapSizeX() + this.guiConfig.borderSize(),
-                //         this.guiConfig.yOffset() + this.guiConfig.mapSizeY() + this.guiConfig.borderSize(),
-                //         this.guiConfig.borderColor()
-                // );
-
-                //guiGraphics.enableScissor(this.guiConfig.xOffset(), this.guiConfig.yOffset(), this.guiConfig.xOffset() + this.guiConfig.mapSizeX(), this.guiConfig.yOffset() + this.guiConfig.mapSizeY());
-                //guiGraphics.disableScissor();
             });
-
             FRAMEBUFFER.unbind();
 
+            // Draws the quad and binds the shader.
             drawShape(poseStack);
         }
     }
@@ -89,8 +89,6 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
 
         var previous = RenderSystem.getShader();
         var copy = new Matrix4f(RenderSystem.getProjectionMatrix());
-
-        var renderTarget = Minecraft.getInstance().getMainRenderTarget();
 
         RenderSystem.setShaderTexture(0, TEXTURE);
         RenderSystem.setShaderTexture(1, FRAMEBUFFER.getColor());
