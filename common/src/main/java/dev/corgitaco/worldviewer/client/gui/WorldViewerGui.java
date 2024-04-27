@@ -21,7 +21,7 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
         ReloadableShaders.RELOADABLE_SHADERS.defineShader("minimap_shape", DefaultVertexFormat.POSITION_TEX);
     }
 
-    private final Framebuffer framebuffer = new Framebuffer();
+    private final Framebuffer framebuffer = new Framebuffer(854, 480);
 
     private final WorldViewerClientConfig.Gui guiConfig;
 
@@ -46,11 +46,9 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
 
             PoseStack poseStack = guiGraphics.pose();
 
-            framebuffer.bind();
-            glClearBufferfv(GL_COLOR, 1, new float[] {1.0F, 0.0F, 0.0F, 1.0F});
-            glClear(GL_COLOR_BUFFER_BIT);
-
-            glViewport(0, 0, 854, 480);
+            //framebuffer.bind();
+            //glClearBufferfv(GL_COLOR, 1, new float[] {1.0F, 0.0F, 0.0F, 1.0F});
+            //glClear(GL_COLOR_BUFFER_BIT);
 
             guiGraphics.drawManaged(() -> {
                 var offsetX = 0.0F;
@@ -72,7 +70,6 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
                 //guiGraphics.enableScissor(this.guiConfig.xOffset(), this.guiConfig.yOffset(), this.guiConfig.xOffset() + this.guiConfig.mapSizeX(), this.guiConfig.yOffset() + this.guiConfig.mapSizeY());
                 //guiGraphics.disableScissor();
             });
-            Framebuffer.unbind();
 
             drawShape(poseStack);
         }
@@ -91,9 +88,11 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
 
         var previous = RenderSystem.getShader();
 
+        // var renderTarget = Minecraft.getInstance().getMainRenderTarget();
+
         RenderSystem.setShaderTexture(0, TEXTURE);
-        RenderSystem.setShaderTexture(1, framebuffer.getTexture());
-        // RenderSystem.setProjectionMatrix(projection, VertexSorting.ORTHOGRAPHIC_Z);
+        RenderSystem.setShaderTexture(1, TEXTURE);
+        RenderSystem.setProjectionMatrix(projection, VertexSorting.ORTHOGRAPHIC_Z);
 
         ReloadableShaders.RELOADABLE_SHADERS.setShader("minimap_shape");
 

@@ -9,6 +9,6 @@ uniform mat4 ProjMat;
 out vec2 inUV0;
 
 void main() {
-    gl_Position = vec4(Position, 1.0);
+    gl_Position = ProjMat * vec4(Position, 1.0);
     inUV0 = UV0;
 }
