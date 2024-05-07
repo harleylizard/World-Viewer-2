@@ -50,17 +50,11 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
             PoseStack poseStack = guiGraphics.pose();
             poseStack.pushPose();
 
-            var offsetX = guiConfig.xOffset();
-            var offsetY = guiConfig.yOffset();
-            poseStack.translate(offsetX, offsetY, 0);
-
             var renderTarget = (RenderTargetAccessor) Minecraft.getInstance().getMainRenderTarget();
 
             // Bind off screen framebuffer
             FRAMEBUFFER.bind(renderTarget.getFrameBufferId());
             glDrawBuffer(GL_COLOR_ATTACHMENT0);
-
-            glDisable(GL_DEPTH_TEST);
 
             FRAMEBUFFER.clear();
 
@@ -71,7 +65,12 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
              */
 
             // This doesn't work
-            guiGraphics.drawManaged(() -> worldViewerRenderer.render(guiGraphics.bufferSource(), poseStack, -1, -1, partialTicks));
+            guiGraphics.drawManaged(() -> {
+                glDisable(GL_DEPTH_TEST);
+
+                RenderSystem.colorMask(true, true, true, true);
+                worldViewerRenderer.render(guiGraphics.bufferSource(), poseStack, -1, -1, partialTicks);
+            });
 
             FRAMEBUFFER.unbind();
 
