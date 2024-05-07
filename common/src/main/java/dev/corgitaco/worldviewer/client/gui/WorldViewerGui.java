@@ -12,7 +12,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 
-import static org.lwjgl.opengl.GL11.glDrawBuffer;
+import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 
 public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.Access {
@@ -59,6 +59,8 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
             // Bind off screen framebuffer
             FRAMEBUFFER.bind(renderTarget.getFrameBufferId());
             glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+            glDisable(GL_DEPTH_TEST);
 
             FRAMEBUFFER.clear();
 
