@@ -12,7 +12,6 @@ import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 
-import static org.lwjgl.opengl.GL11.glClearColor;
 import static org.lwjgl.opengl.GL11.glDrawBuffer;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 
@@ -20,6 +19,8 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
     private static final ResourceLocation TEXTURE = new ResourceLocation("worldviewer", "textures/minimap_shape/star.png");
 
     private static final Framebuffer FRAMEBUFFER = new Framebuffer(854, 480);
+
+    private static final Matrix4f MATRIX_4_F = new Matrix4f();
 
     static {
         ReloadableShaders.RELOADABLE_SHADERS.defineShader("minimap_shape", DefaultVertexFormat.POSITION_TEX);
@@ -47,42 +48,46 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
             }
 
             PoseStack poseStack = guiGraphics.pose();
+            poseStack.pushPose();
+
+            var offsetX = guiConfig.xOffset();
+            var offsetY = guiConfig.yOffset();
+            poseStack.translate(offsetX, offsetY, 0);
 
             var renderTarget = (RenderTargetAccessor) Minecraft.getInstance().getMainRenderTarget();
 
+            // Bind off screen framebuffer
             FRAMEBUFFER.bind(renderTarget.getFrameBufferId());
             glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
             FRAMEBUFFER.clear();
 
             /** TODO::
-             *  Render Minimap GUI offscreen onto the Framebuffer's color attachment,
-             *  then in "drawShape" draw the quad and bind the shader.
-             *  Within the fragment shader it multiplies the shape's rgba with the color attachment's rgba
+             *  Render Minimap GUI offscreen onto the Framebuffer's color attachment, (not working)
+             *  then in "drawShape" draw the quad and bind the shader. (working)
+             *  Within the fragment shader it multiplies the shape's rgba with the color attachment's rgba (working)
              */
-            guiGraphics.drawManaged(() -> {
-                var offsetX = 0.0F;
-                var offsetY = 0.0F;
 
-                poseStack.pushPose();
-                poseStack.translate(offsetX, offsetY, 0);
-                worldViewerRenderer.render(guiGraphics.bufferSource(), poseStack, -1, -1, partialTicks);
-                poseStack.popPose();
-            });
+            // This doesn't work
+            guiGraphics.drawManaged(() -> worldViewerRenderer.render(guiGraphics.bufferSource(), poseStack, -1, -1, partialTicks));
+
             FRAMEBUFFER.unbind();
 
-            // Draws the quad and binds the shader.
-            drawShape(poseStack);
+            // Draws the quad and binds the shader. This works correctly!
+            drawShape();
+            poseStack.popPose();
         }
     }
 
-    private void drawShape(PoseStack poseStack) {
+    private void drawShape() {
         var window = Minecraft.getInstance().getWindow();
         var width = (float) window.getWidth();
         var height = (float) window.getHeight();
         var aspectRatio = width / height;
         var size = 1.0F;
-        var projection = new Matrix4f().ortho(-size * aspectRatio, size * aspectRatio, -size, size, 10.0F, -10.0F);
+
+        MATRIX_4_F.identity();
+        MATRIX_4_F.ortho(-size * aspectRatio, size * aspectRatio, -size, size, 10.0F, -10.0F);
 
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
@@ -93,7 +98,7 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
         RenderSystem.setShaderTexture(0, TEXTURE);
         RenderSystem.setShaderTexture(1, FRAMEBUFFER.getColor());
 
-        RenderSystem.setProjectionMatrix(projection, VertexSorting.ORTHOGRAPHIC_Z);
+        RenderSystem.setProjectionMatrix(MATRIX_4_F, VertexSorting.ORTHOGRAPHIC_Z);
 
         ReloadableShaders.RELOADABLE_SHADERS.setShader("minimap_shape");
 

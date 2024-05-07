@@ -25,6 +25,14 @@ public final class Framebuffer {
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
         glBindTexture(GL_TEXTURE_2D, 0);
 
+        // Renderbuffer isn't needed, makes no difference regardless.
+        var buffer = glGenRenderbuffers();
+        glBindRenderbuffer(GL_RENDERBUFFER, buffer);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, buffer);
+
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
             throw new RuntimeException("Incomplete framebuffer!!");
         }
@@ -32,6 +40,9 @@ public final class Framebuffer {
     }
 
     public void bind(int previous) {
+        if (!glIsFramebuffer(framebuffer)) {
+            throw new RuntimeException("Framebuffer was deleted.");
+        }
         this.previous = previous;
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
     }
@@ -42,6 +53,9 @@ public final class Framebuffer {
     }
 
     public int getColor() {
+        if (!glIsTexture(color)) {
+            throw new RuntimeException("Color attachment texture was deleted.");
+        }
         return color;
     }
 
