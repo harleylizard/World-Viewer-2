@@ -3,6 +3,7 @@ package dev.corgitaco.worldviewer.client.gui;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
+import com.mojang.math.Axis;
 import dev.corgitaco.worldviewer.client.WorldViewerClientConfig;
 import dev.corgitaco.worldviewer.client.render.WorldViewerRenderer;
 import dev.corgitaco.worldviewer.mixin.RenderTargetAccessor;
@@ -16,7 +17,7 @@ import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 
 public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.Access {
-    private static final ResourceLocation TEXTURE = new ResourceLocation("worldviewer", "textures/minimap_shape/star.png");
+    private static final ResourceLocation TEXTURE = new ResourceLocation("worldviewer", "textures/minimap_shape/debug.png");
 
     private static final Framebuffer FRAMEBUFFER = new Framebuffer(854, 854);
 
@@ -70,8 +71,10 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
 
                 glDisable(GL_DEPTH_TEST);
 
-                poseStack.scale(-1.0F, -1.0F, 1.0F);
-                //poseStack.translate(1.5F, 1.5F, 0.0F);
+
+
+                poseStack.mulPose(Axis.ZP.rotationDegrees(180.0F));
+                poseStack.translate(-200.0F, 0.0F, 0.0F);
 
                 RenderSystem.colorMask(true, true, true, true);
                 worldViewerRenderer.render(guiGraphics.bufferSource(), poseStack, -1, -1, partialTicks);
@@ -105,7 +108,6 @@ public final class WorldViewerGui implements AutoCloseable, WorldViewerRenderer.
 
         RenderSystem.setShaderTexture(0, TEXTURE);
         RenderSystem.setShaderTexture(1, FRAMEBUFFER.getColor());
-
 
         var x = (float) guiConfig.xOffset() / 9.0F;
         var y = (float) guiConfig.yOffset() / 22.0F; // 16.0F
